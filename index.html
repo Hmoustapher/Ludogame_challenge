@@ -408,6 +408,14 @@
         <div>Nairaland 3D Ludo</div>
       </div>
       <div class="controls">
+        <label style="display:flex;align-items:center;gap:.5rem;color:var(--text-muted);font-weight:700">
+          Players
+          <select id="playersSelect" style="background:#0c1024;color:#e0e6ff;border:1px solid var(--border);padding:.4rem .6rem;border-radius:.4rem">
+            <option value="2">2 (You + 1 AI)</option>
+            <option value="3">3 (You + 2 AI)</option>
+            <option value="4">4 (You + 3 AI)</option>
+          </select>
+        </label>
         <button class="btn" id="rulesBtn">📖 Rules</button>
         <button class="btn primary" id="startBtn">▶ Start Game</button>
       </div>
@@ -527,280 +535,122 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
 
   <script>
-    // Wait for three.js to load
-    function initGame() {
-      if (typeof THREE === 'undefined' || !THREE.Scene) {
-        setTimeout(initGame, 50);
-        return;
-      }
+    // Immediate UI wiring and non-blocking 3D initialization
+    let dice = null, scene = null, camera = null, renderer = null, controls = null, canvasEl = null;
+    const playerNames = { red: 'Red', blue: 'Blue', yellow: 'Yellow', green: 'Green' };
+    const PLAYER_ORDER = ['red','blue','yellow','green'];
+    const COLORS = { red: 0xd32f2f, blue: 0x1976d2, yellow: 0xfbbf24, green: 0x22c55e };
+    const RING_COUNT = 52, HOME_STEPS = 6;
+    const startIndex = { red:0, blue:13, yellow:26, green:39 };
+    const safeIndices = new Set([0,13,26,39]);
+    let ringPositions = [];
+    let homePaths = { red:[], blue:[], yellow:[], green:[] };
+    let tokens = { red:[], blue:[], yellow:[], green:[] };
+    const game = { activeCount:2, order:[...PLAYER_ORDER], turnIdx:0, rolled:null, finished:false, hasStarted:false, turnNo:0,
+                  ai:{ blue:true, yellow:true, green:true }, canUndo:null };
 
-      // ===== THREE.JS SETUP =====
-      const container = document.getElementById('canvas-container');
-      const canvas = document.createElement('canvas');
-      container.appendChild(canvas);
+    function showNotification(msg){ const d=document.createElement('div'); d.className='notification'; d.textContent=msg; document.body.appendChild(d); setTimeout(()=>d.remove(),3000); }
 
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0a0e27);
-      const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-      renderer.setSize(container.clientWidth, container.clientHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.shadowMap.enabled = true;
+    function setTurnUI(){ const p=activePlayer(); const el=document.getElementById('playerDisplay'); if(!el) return; el.className=`player-status ${p}`; el.innerHTML=`<div class="player-name">${playerNames[p]} Player</div><div class="player-info">${p==='red'?'Your move':'AI turn'}</div>`; }
 
-      const controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.enablePan = false;
-      controls.minDistance = 20;
-      controls.maxDistance = 100;
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = 2;
+    function updateStats(){ const pc=document.getElementById('playerCount'); const tc=document.getElementById('turnCount'); const gs=document.getElementById('gameStatus'); if(pc) pc.textContent=game.activeCount; if(tc) tc.textContent=game.turnNo; if(gs) gs.textContent=game.hasStarted?(game.finished?'🏁 Finished':'🎮 Playing'):'⏸ Waiting'; }
 
-      camera.position.set(40, 35, 40);
-      controls.target.set(0, 0, 0);
-      controls.update();
+    function wireUI(){
+      const startBtn=document.getElementById('startBtn');
+      const rollBtn=document.getElementById('rollBtn');
+      const undoBtn=document.getElementById('undoBtn');
+      const rulesBtn=document.getElementById('rulesBtn');
+      const rulesModal=document.getElementById('rulesModal');
+      const closeRules=document.getElementById('closeRules');
+      const playersSelect=document.getElementById('playersSelect');
 
-      // ===== LIGHTS =====
-      const ambLight = new THREE.AmbientLight(0xffffff, 0.7);
-      scene.add(ambLight);
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      dirLight.position.set(50, 50, 50);
-      dirLight.castShadow = true;
-      dirLight.shadow.mapSize.width = 2048;
-      dirLight.shadow.mapSize.height = 2048;
-      scene.add(dirLight);
+      playersSelect?.addEventListener('change',()=>{ game.activeCount=Number(playersSelect.value||2); updateStats(); });
 
-      // ===== BOARD CREATION =====
-      const boardRadius = 25;
-      const ringPositions = [];
-      const RING_COUNT = 52;
-      const TILE_SIZE = 1.2;
-      
-      for (let i = 0; i < RING_COUNT; i++) {
-        const angle = (i / RING_COUNT) * Math.PI * 2;
-        ringPositions.push(new THREE.Vector3(Math.cos(angle) * boardRadius, 0, Math.sin(angle) * boardRadius));
-      }
-
-      // Board tiles
-      const tileGroup = new THREE.Group();
-      scene.add(tileGroup);
-      const tileGeo = new THREE.BoxGeometry(TILE_SIZE, 0.3, TILE_SIZE);
-      const colors = [0xd32f2f, 0x1976d2, 0xfbbf24, 0x22c55e];
-
-      for (let i = 0; i < RING_COUNT; i++) {
-        const colorIdx = Math.floor((i / RING_COUNT) * 4);
-        const mat = new THREE.MeshStandardMaterial({ color: colors[colorIdx], roughness: 0.7, metalness: 0.3 });
-        const tile = new THREE.Mesh(tileGeo, mat);
-        tile.position.copy(ringPositions[i]);
-        tile.position.y = 0.15;
-        tile.rotation.y = Math.atan2(ringPositions[i].x, ringPositions[i].z);
-        tile.castShadow = true;
-        tileGroup.add(tile);
-      }
-
-      // Center hub
-      const hub = new THREE.Mesh(
-        new THREE.CylinderGeometry(5, 5, 0.5, 32),
-        new THREE.MeshStandardMaterial({ color: 0x00d4ff, emissive: 0x0099cc, emissiveIntensity: 0.5 })
-      );
-      hub.position.y = 0.25;
-      hub.castShadow = true;
-      scene.add(hub);
-
-      // Ground
-      const ground = new THREE.Mesh(
-        new THREE.CylinderGeometry(60, 60, 1, 64),
-        new THREE.MeshStandardMaterial({ color: 0x1a1f3a, roughness: 0.9 })
-      );
-      ground.position.y = -0.5;
-      ground.receiveShadow = true;
-      scene.add(ground);
-
-      // ===== TOKENS =====
-      const TOKEN_COUNT = 4;
-      const tokens = {
-        red: [],
-        blue: [],
-        yellow: [],
-        green: []
-      };
-
-      const playerColors = {
-        red: 0xd32f2f,
-        blue: 0x1976d2,
-        yellow: 0xfbbf24,
-        green: 0x22c55e
-      };
-
-      const nestPositions = {
-        red: new THREE.Vector3(35, 0, 0),
-        blue: new THREE.Vector3(0, 0, 35),
-        yellow: new THREE.Vector3(-35, 0, 0),
-        green: new THREE.Vector3(0, 0, -35)
-      };
-
-      for (const [player, color] of Object.entries(playerColors)) {
-        for (let i = 0; i < TOKEN_COUNT; i++) {
-          const tokenGeo = new THREE.SphereGeometry(0.7, 24, 16);
-          const tokenMat = new THREE.MeshStandardMaterial({
-            color,
-            emissive: color,
-            emissiveIntensity: 0.3,
-            metalness: 0.4,
-            roughness: 0.6
-          });
-          const token = new THREE.Mesh(tokenGeo, tokenMat);
-          const offset = Math.floor(i / 2);
-          const side = i % 2;
-          token.position.copy(nestPositions[player]);
-          token.position.x += (side === 0 ? -1.5 : 1.5);
-          token.position.z += (offset === 0 ? -1.5 : 1.5);
-          token.position.y = 1;
-          token.castShadow = true;
-          token.userData = { player, id: i, active: true };
-          scene.add(token);
-          tokens[player].push(token);
-        }
-      }
-
-      // ===== DICE =====
-      const diceGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-      const diceMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0xffd60a,
-        emissiveIntensity: 0.3,
-        metalness: 0.5,
-        roughness: 0.5
-      });
-      const dice = new THREE.Mesh(diceGeo, diceMat);
-      dice.position.set(0, 15, 0);
-      dice.castShadow = true;
-      scene.add(dice);
-
-      // ===== GAME STATE =====
-      let gameState = {
-        currentPlayer: 0,
-        players: ['red', 'blue'],
-        diceValue: null,
-        turnCount: 0,
-        isPlaying: false
-      };
-
-      const playerNames = { red: 'Red', blue: 'Blue', yellow: 'Yellow', green: 'Green' };
-
-      // ===== UI UPDATES =====
-      function updatePlayerDisplay() {
-        const player = gameState.players[gameState.currentPlayer];
-        const display = document.getElementById('playerDisplay');
-        display.className = `player-status ${player}`;
-        display.innerHTML = `
-          <div class="player-name">${playerNames[player]} Player</div>
-          <div class="player-info">Tokens Active: <strong id="activeTokens">4</strong></div>
-        `;
-      }
-
-      function updateStats() {
-        document.getElementById('playerCount').textContent = gameState.players.length;
-        document.getElementById('turnCount').textContent = gameState.turnCount;
-        document.getElementById('gameStatus').textContent = gameState.isPlaying ? '🎮 Playing' : '⏸ Waiting';
-      }
-
-      function showNotification(msg) {
-        const notif = document.createElement('div');
-        notif.className = 'notification';
-        notif.textContent = msg;
-        document.body.appendChild(notif);
-        setTimeout(() => notif.remove(), 3000);
-      }
-
-      // ===== BUTTON EVENT LISTENERS (GUARANTEED FUNCTIONAL) =====
-      
-      // START BUTTON
-      document.getElementById('startBtn').addEventListener('click', function() {
-        gameState.isPlaying = !gameState.isPlaying;
-        gameState.turnCount = 0;
-        showNotification('🎮 Game Started! Roll the dice to begin.');
-        document.getElementById('startBtn').classList.remove('pulse');
-        updateStats();
-        updatePlayerDisplay();
+      startBtn?.addEventListener('click',()=>{
+        game.hasStarted=true; game.finished=false; game.turnIdx=0; game.rolled=null; game.turnNo=0;
+        game.activeCount=Number(playersSelect?.value||2);
+        game.ai.blue=true; game.ai.yellow=game.activeCount>=3; game.ai.green=game.activeCount>=4;
+        // reset tokens
+        for(const p of PLAYER_ORDER){ for(const t of tokens[p]||[]){ const id=t.userData?.id??0; t.userData={player:p,id,state:'home',ringIndex:null,steps:0,homeIndex:null}; placeToken(t); } }
+        document.getElementById('diceValue').textContent='—';
+        startBtn.classList.remove('pulse'); setTurnUI(); updateStats(); showNotification('🎮 Game Started! Roll the dice.');
+        if (isAI(activePlayer())) setTimeout(doRoll, 500);
       });
 
-      // ROLL BUTTON
-      document.getElementById('rollBtn').addEventListener('click', function() {
-        if (!gameState.isPlaying) {
-          showNotification('Start the game first!');
-          return;
-        }
-        const roll = Math.floor(Math.random() * 6) + 1;
-        gameState.diceValue = roll;
-        document.getElementById('diceValue').textContent = roll;
-        
-        // Animate dice
-        dice.rotation.x = Math.random() * Math.PI * 2;
-        dice.rotation.y = Math.random() * Math.PI * 2;
-        dice.rotation.z = Math.random() * Math.PI * 2;
-        
-        showNotification(`🎲 Rolled: ${roll}`);
-        gameState.turnCount++;
-        updateStats();
-      });
+      rollBtn?.addEventListener('click',()=>{ if(!game.hasStarted||game.finished) return showNotification('Start the game first!'); doRoll(); });
+      undoBtn?.addEventListener('click',()=>{ showNotification('↶ Move undone!'); });
+      rulesBtn?.addEventListener('click',()=>rulesModal?.classList.add('active'));
+      closeRules?.addEventListener('click',()=>rulesModal?.classList.remove('active'));
+      rulesModal?.addEventListener('click',(e)=>{ if(e.target.id==='rulesModal') rulesModal.classList.remove('active'); });
 
-      // UNDO BUTTON
-      document.getElementById('undoBtn').addEventListener('click', function() {
-        showNotification('↶ Move undone!');
-      });
-
-      // RULES BUTTON
-      document.getElementById('rulesBtn').addEventListener('click', function() {
-        document.getElementById('rulesModal').classList.add('active');
-      });
-
-      // CLOSE RULES BUTTON
-      document.getElementById('closeRules').addEventListener('click', function() {
-        document.getElementById('rulesModal').classList.remove('active');
-      });
-
-      // CLICK OUTSIDE MODAL TO CLOSE
-      document.getElementById('rulesModal').addEventListener('click', function(e) {
-        if (e.target.id === 'rulesModal') {
-          document.getElementById('rulesModal').classList.remove('active');
-        }
-      });
-
-      // ===== RENDER LOOP =====
-      function animate() {
-        requestAnimationFrame(animate);
-        controls.update();
-        dice.rotation.x += 0.01;
-        dice.rotation.y += 0.01;
-        renderer.render(scene, camera);
-      }
-      animate();
-
-      // Handle window resize
-      window.addEventListener('resize', () => {
-        const w = container.clientWidth;
-        const h = container.clientHeight;
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
-      });
-
-      // Initialize display
-      updatePlayerDisplay();
-      updateStats();
-
-      // Pulse animation for start button
-      document.getElementById('startBtn').classList.add('pulse');
-      showNotification('👋 Welcome! Click Start Game to begin.');
+      document.getElementById('startBtn')?.classList.add('pulse');
+      setTurnUI(); updateStats();
     }
 
-    // Start initialization when DOM is ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initGame);
-    } else {
-      initGame();
+    function initThreeWhenReady(){ let waited=0; const tick=()=>{ if(typeof THREE!=='undefined'&&THREE.Scene){ initThree(); } else if(waited<8000){ waited+=100; setTimeout(tick,100);} else { showNotification('⚠️ 3D engine failed to load. Check internet and reload.'); } }; tick(); }
+
+    function initThree(){
+      const container=document.getElementById('canvas-container'); canvasEl=document.createElement('canvas'); container.appendChild(canvasEl);
+      scene=new THREE.Scene(); scene.background=new THREE.Color(0x0a0e27);
+      camera=new THREE.PerspectiveCamera(75, container.clientWidth/container.clientHeight, 0.1, 1000);
+      renderer=new THREE.WebGLRenderer({canvas:canvasEl, antialias:true, alpha:true}); renderer.setSize(container.clientWidth, container.clientHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2)); renderer.shadowMap.enabled=true;
+      controls=new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping=true; controls.dampingFactor=0.05; controls.enablePan=false; controls.minDistance=20; controls.maxDistance=100; controls.autoRotate=true; controls.autoRotateSpeed=2;
+      camera.position.set(40,35,40); controls.target.set(0,0,0); controls.update();
+      const amb=new THREE.AmbientLight(0xffffff,0.7); scene.add(amb); const dir=new THREE.DirectionalLight(0xffffff,0.8); dir.position.set(50,50,50); dir.castShadow=true; scene.add(dir);
+
+      const boardRadius=25; ringPositions=[]; const TILE_SIZE=1.2;
+      for(let i=0;i<RING_COUNT;i++){ const ang=(i/RING_COUNT)*Math.PI*2; ringPositions.push(new THREE.Vector3(Math.cos(ang)*boardRadius,0,Math.sin(ang)*boardRadius)); }
+      const tileGroup=new THREE.Group(); scene.add(tileGroup); const tileGeo=new THREE.BoxGeometry(TILE_SIZE,0.3,TILE_SIZE); const quad=[COLORS.red,COLORS.blue,COLORS.yellow,COLORS.green];
+      for(let i=0;i<RING_COUNT;i++){ const idx=Math.floor((i/RING_COUNT)*4); const mat=new THREE.MeshStandardMaterial({color:quad[idx], roughness:0.7, metalness:0.3}); const tile=new THREE.Mesh(tileGeo,mat); tile.position.copy(ringPositions[i]); tile.position.y=0.15; tile.rotation.y=Math.atan2(ringPositions[i].x, ringPositions[i].z); tile.castShadow=true; tileGroup.add(tile); }
+      const hub=new THREE.Mesh(new THREE.CylinderGeometry(5,5,0.5,32), new THREE.MeshStandardMaterial({color:0x00d4ff, emissive:0x0099cc, emissiveIntensity:0.5})); hub.position.y=0.25; hub.castShadow=true; scene.add(hub);
+      const ground=new THREE.Mesh(new THREE.CylinderGeometry(60,60,1,64), new THREE.MeshStandardMaterial({color:0x1a1f3a, roughness:0.9})); ground.position.y=-0.5; ground.receiveShadow=true; scene.add(ground);
+
+      // tokens
+      tokens={ red:[], blue:[], yellow:[], green:[] };
+      const nests={ red:new THREE.Vector3(35,0,0), blue:new THREE.Vector3(0,0,35), yellow:new THREE.Vector3(-35,0,0), green:new THREE.Vector3(0,0,-35) };
+      const slots=(c)=>[[-1.2,-1.2],[1.2,-1.2],[-1.2,1.2],[1.2,1.2]].map(([dx,dz])=>new THREE.Vector3(c.x+dx,0.6,c.z+dz));
+      for(const p of PLAYER_ORDER){ const s=slots(nests[p]); for(let i=0;i<4;i++){ const geo=new THREE.SphereGeometry(0.7,24,16); const mat=new THREE.MeshStandardMaterial({color:COLORS[p], emissive:COLORS[p], emissiveIntensity:0.3, metalness:0.4, roughness:0.6}); const t=new THREE.Mesh(geo,mat); t.position.copy(s[i]); t.userData={player:p,id:i,state:'home',ringIndex:null,steps:0,homeIndex:null}; scene.add(t); tokens[p].push(t);} }
+
+      // home paths
+      for(const p of PLAYER_ORDER){ homePaths[p]=[]; const si=startIndex[p]; const a=(si/RING_COUNT)*Math.PI*2; for(let k=0;k<HOME_STEPS;k++){ const f=(k+1)/(HOME_STEPS+1); const x=Math.cos(a)*(boardRadius*(1-f)); const z=Math.sin(a)*(boardRadius*(1-f)); homePaths[p].push(new THREE.Vector3(x,0,z)); } }
+
+      // dice
+      const dgeo=new THREE.BoxGeometry(1.5,1.5,1.5); const dmat=new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xffd60a, emissiveIntensity:0.3, metalness:0.5, roughness:0.5}); dice=new THREE.Mesh(dgeo,dmat); dice.position.set(0,15,0); dice.castShadow=true; scene.add(dice);
+
+      // picking
+      setupPicking();
+
+      function render(){ requestAnimationFrame(render); controls.update(); if(dice){ dice.rotation.x+=0.01; dice.rotation.y+=0.01; } renderer.render(scene,camera);} render();
+      window.addEventListener('resize',()=>{ const w=container.clientWidth, h=container.clientHeight; camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); });
     }
+
+    // ===== Rules & movement =====
+    function placeToken(t){ const ud=t.userData; if(ud.state==='home') return; if(ud.state==='ring'){ const p=ringPositions[ud.ringIndex]; t.position.set(p.x,0.62,p.z);} else if(ud.state==='homestretch'){ const p=homePaths[ud.player][ud.homeIndex]; t.position.set(p.x,0.62,p.z);} else if(ud.state==='finished'){ const p=homePaths[ud.player][HOME_STEPS-1]; t.position.set(p.x,1.0,p.z);} }
+    function activePlayers(){ return game.order.slice(0,game.activeCount); }
+    function activePlayer(){ return activePlayers()[game.turnIdx]; }
+    function isAI(p){ return p!=='red'; }
+    function incrementTurn(extra){ if(!extra) game.turnIdx=(game.turnIdx+1)%game.activeCount; game.rolled=null; setTurnUI(); document.getElementById('diceValue').textContent='—'; if(isAI(activePlayer()) && game.hasStarted && !game.finished) setTimeout(doRoll, 500); }
+
+    function doRoll(){ const roll=1+Math.floor(Math.random()*6); game.rolled=roll; game.turnNo++; document.getElementById('diceValue').textContent=roll; if(dice){ dice.rotation.x+=Math.random()*Math.PI; dice.rotation.y+=Math.random()*Math.PI; } updateStats(); showNotification(`🎲 Rolled: ${roll}`); const p=activePlayer(); const moves=legalMoves(p,roll); if(!moves.length){ showNotification('No moves — turn passes'); return incrementTurn(roll===6);} if(isAI(p)){ const mv=pickAIMove(p,roll,moves); performMove(mv,roll).then(({bonus,won})=>{ if(won){ game.finished=true; showNotification(`${playerNames[p]} wins! 🏁`); } else { incrementTurn(roll===6||bonus); } }); } else { highlightMoves(moves,true); selectingMoves=moves; showNotification('Pick a glowing token'); } }
+
+    function legalMoves(p, roll){ const L=[]; for(const t of tokens[p]||[]){ const ud=t.userData; if(ud.state==='finished') continue; if(ud.state==='home'){ if(roll===6) L.push({t,kind:'enter'}); } else if(ud.state==='ring'){ const next=ud.steps+roll; if(next<52){ L.push({t,kind:'ring',toIndex:(ud.ringIndex+roll)%RING_COUNT}); } else { const into=next-52; if(into<=HOME_STEPS) L.push({t,kind:'enterHome',toHome:into-1}); } } else if(ud.state==='homestretch'){ const to=ud.homeIndex+roll; if(to===HOME_STEPS) L.push({t,kind:'finish'}); else if(to<HOME_STEPS) L.push({t,kind:'home',toHome:to}); } } return L; }
+    function tileOccupantsOnRing(idx){ const occ=[]; for(const p of activePlayers()){ for(const t of tokens[p]) if(t.userData.state==='ring'&&t.userData.ringIndex===idx) occ.push(t);} return occ; }
+    function captureIfNeeded(p, idx){ if(safeIndices.has(idx)) return false; let cap=false; for(const e of tileOccupantsOnRing(idx)){ if(e.userData.player!==p){ e.userData={...e.userData,state:'home',ringIndex:null,steps:0,homeIndex:null}; placeToken(e); cap=true; } } return cap; }
+    function tweenTo(t,target,dur){ return new Promise(res=>{ const from=t.position.clone(); const y0=from.y; const t0=performance.now(); function step(){ const k=Math.min(1,(performance.now()-t0)/dur); t.position.lerpVectors(from,target,k); t.position.y=y0+Math.sin(k*Math.PI)*0.25; if(k<1) requestAnimationFrame(step); else res(); } requestAnimationFrame(step); }); }
+    async function moveAlongRing(t,steps){ for(let s=0;s<steps;s++){ const toIdx=(t.userData.ringIndex+1)%RING_COUNT; const to=ringPositions[toIdx]; await tweenTo(t,new THREE.Vector3(to.x,0.62,to.z),160); t.userData.ringIndex=toIdx; t.userData.steps+=1; } }
+    async function performMove(mv,roll){ const p=mv.t.userData.player; let bonus=roll===6; if(mv.kind==='enter'){ mv.t.userData={...mv.t.userData,state:'ring',ringIndex:startIndex[p],steps:0,homeIndex:null}; await tweenTo(mv.t,new THREE.Vector3(ringPositions[startIndex[p]].x,0.62,ringPositions[startIndex[p]].z),220); captureIfNeeded(p,startIndex[p]); }
+      else if(mv.kind==='ring'){ await moveAlongRing(mv.t,roll); captureIfNeeded(p,mv.t.userData.ringIndex); }
+      else if(mv.kind==='enterHome'){ const need=52-mv.t.userData.steps; if(need>0) await moveAlongRing(mv.t,need); const idx=mv.toHome; mv.t.userData={...mv.t.userData,state:'homestretch',ringIndex:null,homeIndex:idx}; const pos=homePaths[p][idx]; await tweenTo(mv.t,new THREE.Vector3(pos.x,0.62,pos.z),220); }
+      else if(mv.kind==='home'){ mv.t.userData.homeIndex=mv.toHome; const pos=homePaths[p][mv.toHome]; await tweenTo(mv.t,new THREE.Vector3(pos.x,0.62,pos.z),200); }
+      else if(mv.kind==='finish'){ mv.t.userData={...mv.t.userData,state:'finished',homeIndex:HOME_STEPS-1}; const pos=homePaths[p][HOME_STEPS-1]; await tweenTo(mv.t,new THREE.Vector3(pos.x,1.0,pos.z),240); }
+      const won=tokens[p].every(t=>t.userData.state==='finished'); return {bonus,won}; }
+    function pickAIMove(p,roll,moves){ const cap = moves.filter(m=>{ if(m.kind==='ring'){ const to=(m.t.userData.ringIndex+roll)%RING_COUNT; return tileOccupantsOnRing(to).some(t=>t.userData.player!==p)&&!safeIndices.has(to);} if(m.kind==='enter'){ const to=startIndex[p]; return tileOccupantsOnRing(to).some(t=>t.userData.player!==p)&&!safeIndices.has(to);} return false; }); if(cap.length) return cap[Math.floor(Math.random()*cap.length)]; const copy=moves.slice(); copy.sort((a,b)=>{ const av=a.t.userData.steps+(a.t.userData.state==='homestretch'?(52+a.t.userData.homeIndex):0); const bv=b.t.userData.steps+(b.t.userData.state==='homestretch'?(52+b.t.userData.homeIndex):0); return bv-av; }); return copy[0]; }
+    let selectingMoves=[]; function highlightMoves(moves,on){ for(const m of moves){ m.t.material.emissiveIntensity=on?0.6:0.3; } }
+    function setupPicking(){ const ray=new THREE.Raycaster(); const ptr=new THREE.Vector2(); function onDown(ev){ if(!selectingMoves.length) return; if(activePlayer()!=='red') return; const r=canvasEl.getBoundingClientRect(); ptr.x=((ev.clientX-r.left)/r.width)*2-1; ptr.y=-((ev.clientY-r.top)/r.height)*2+1; ray.setFromCamera(ptr,camera); const intersects=ray.intersectObjects(selectingMoves.map(m=>m.t)); if(!intersects.length) return; const obj=intersects[0].object; const mv=selectingMoves.find(m=>m.t===obj); if(!mv) return; const roll=game.rolled; highlightMoves(selectingMoves,false); selectingMoves=[]; performMove(mv,roll).then(({bonus,won})=>{ if(won){ game.finished=true; showNotification('You win! 🏁'); } else { incrementTurn(roll===6||bonus); } }); }
+      canvasEl.addEventListener('pointerdown', onDown); }
+
+    function bootstrap(){ wireUI(); initThreeWhenReady(); showNotification('👋 Welcome! Click Start Game to begin.'); }
+    if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', bootstrap); } else { bootstrap(); }
   </script>
 </body>
 </html>
