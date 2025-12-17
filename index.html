@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nairaland 3D Ludo — Single File (three.js)</title>
+  <style>
+    :root{
+      --bg:#0e1016; --panel:#121622; --muted:#a9b0c2; --accent:#6ee7f9; --ok:#34d399; --warn:#f59e0b; --bad:#ef4444;
+      --red:#d32f2f; --blue:#1976d2; --yellow:#fbbf24; --green:#22c55e;
+    }
+    html,body{height:100%; margin:0; background:var(--bg); color:white; font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+    #app{position:fixed; inset:0; display:grid; grid-template-rows:auto 1fr auto;}
+
+    header{display:flex; align-items:center; gap:.75rem; padding:.5rem .75rem; background:linear-gradient(180deg,#0f1320,#0e1016); border-bottom:1px solid #1b2235;}
+    header .dot{width:10px;height:10px;border-radius:50%;}
+    header .title{font-weight:700; letter-spacing:.2px}
+    header .sp{flex:1}
+    header .btn{background:#1b2235; color:#e6ecff; border:1px solid #263150; padding:.45rem .7rem; border-radius:.5rem; cursor:pointer}
+    header .btn:hover{background:#212a46}
+    header .btn.primary{background:var(--accent); color:#071018; border-color:#72e6ff; font-weight:700}
+    header select, header input[type=checkbox]{background:#0c0f18; color:#cbd5e1; border:1px solid #27304a; padding:.35rem .5rem; border-radius:.35rem}
+
+    #canvas-wrap{position:relative; overflow:hidden}
+    #hud{position:absolute; inset:0; pointer-events:none;}
+
+    .panel{position:absolute; right:12px; top:12px; width:320px; max-width: calc(100% - 24px); background:rgba(10,12,18,.85); border:1px solid #24304f; backdrop-filter: blur(6px); border-radius:.75rem; padding:.75rem; pointer-events:auto}
+    .row{display:flex; align-items:center; gap:.5rem; margin:.35rem 0}
+    .row label{font-size:.9rem; color:var(--muted)}
+    .k{font-weight:600; color:#e6ecff}
+
+    .turn{display:flex; align-items:center; gap:.5rem; padding:.5rem .6rem; border-radius:.5rem; background:#0c1222; border:1px solid #203055}
+    .pill{padding:.25rem .55rem; border-radius:1rem; font-weight:700; font-size:.75rem}
+    .pill.ok{background:rgba(52,211,153,.15); color:var(--ok);}
+    .pill.warn{background:rgba(245,158,11,.15); color:var(--warn)}
+
+    .rules-btn{margin-left:auto}
+
+    .big-dice{font-variant-numeric:tabular-nums; font-size:1.6rem; font-weight:800; letter-spacing:.5px}
+
+    footer{display:flex; align-items:center; gap:.75rem; padding:.5rem .75rem; border-top:1px solid #1b2235; background:#0e1016; color:#a9b0c2}
+    footer .sp{flex:1}
+
+    /* Modal */
+    dialog{background: #0d1220; color:#e6ecff; border:1px solid #283455; border-radius:.75rem; width:min(760px, calc(100% - 32px));}
+    dialog::backdrop{background:rgba(0,0,0,.45)}
+    .modal-header{display:flex; align-items:center; gap:.75rem; padding:12px 16px; border-bottom:1px solid #223155}
+    .modal-body{padding:12px 16px; line-height:1.55}
+    .modal-body h3{margin:10px 0 6px;}
+    .modal-body ul{margin: 6px 0 12px 18px}
+
+    .legend{display:grid; grid-template-columns:auto 1fr; gap:.35rem .75rem; align-items:center}
+    .legend .sw{width:16px;height:16px;border-radius:3px}
+
+    .hint{color:#a9b0c2; font-size:.9rem}
+
+    /* Tiny helper badges in 3D overlay */
+    .toast{position:absolute; left:12px; bottom:12px; background:rgba(0,0,0,.55); padding:.4rem .6rem; border:1px solid #233252; border-radius:.5rem}
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="dot" style="background:var(--accent)"></div>
+    <div class="title">Nairaland 3D Ludo</div>
+    <div class="sp"></div>
+    <label class="row">
+      <span class="k">Players</span>
+      <select id="playersSelect" title="Players">
+        <option value="2">2 (You + AI)</option>
+        <option value="3">3 (You + 2 AI)</option>
+        <option value="4">4 (You + 3 AI)</option>
+      </select>
+    </label>
+    <label class="row" title="Cinematic camera during moves">
+      <input id="cinemaCam" type="checkbox" checked />
+      <span>Camera FX</span>
+    </label>
+    <button id="startBtn" class="btn primary">Start Game</button>
+    <button id="rulesBtn" class="btn rules-btn">Rules</button>
+  </header>
+  <div id="canvas-wrap">
+    <canvas id="c"></canvas>
+    <div id="hud">
+      <div class="panel">
+        <div class="row turn">
+          <div>Turn:</div>
+          <div id="turnBadge" class="pill" style="background:#2a2a40">—</div>
+          <div class="sp"></div>
+          <div class="big-dice" id="diceLabel">🎲 –</div>
+        </div>
+        <div class="row">
+          <button id="rollBtn" class="btn">Roll (R)</button>
+          <button id="undoBtn" class="btn" title="Undo last move (once)">Undo</button>
+          <div class="sp"></div>
+          <span class="hint">Click a glowing token to move</span>
+        </div>
+        <div class="row">
+          <div class="legend">
+            <div class="sw" style="background:var(--red)"></div><div>Red (You)</div>
+            <div class="sw" style="background:var(--blue)"></div><div>Blue (AI)</div>
+            <div class="sw" style="background:var(--yellow)"></div><div>Yellow (AI)</div>
+            <div class="sw" style="background:var(--green)"></div><div>Green (AI)</div>
+          </div>
+        </div>
+      </div>
+      <div id="toast" class="toast" style="display:none"></div>
+    </div>
+  </div>
+  <footer>
+    <div>Built with three.js (CDN). Single HTML file as required.</div>
+    <div class="sp"></div>
+    <div>Hotkeys: R = Roll, 1–4 select token</div>
+  </footer>
+</div>
+
+<dialog id="rulesModal">
+  <div class="modal-header">
+    <div style="font-weight:800">3D Ludo — Rules & Features</div>
+    <div class="sp"></div>
+    <form method="dialog"><button class="btn">Close</button></form>
+  </div>
+  <div class="modal-body">
+    <h3>Objective</h3>
+    Get all four of your tokens from Home → around the ring → into your color’s Home Stretch → Center. First to finish wins.
+
+    <h3>Core Rules</h3>
+    <ul>
+      <li>Roll a 6 to leave Home. Enter board at your color’s Start tile.</li>
+      <li>Move one token exactly the dice value. Roll 6 = extra roll.</li>
+      <li>Captures: Landing on an opponent on a non-safe tile sends them back Home.</li>
+      <li>Safe tiles: The four Start tiles are safe — no captures there.</li>
+      <li>Home Stretch: After one full lap (≥ 52 steps for a token), moves continue into your 6-tile inner path to the Center.</li>
+      <li>Exact Entry: You must roll the exact number to reach the Center.</li>
+    </ul>
+
+    <h3>Unique Features</h3>
+    <ul>
+      <li>3D board with cinematic camera moves (toggle in header).</li>
+      <li>Smart basic AI opponents (capture-first, progress-aware).</li>
+      <li>Lucky Stars: Landing exactly on a star tile grants a bonus roll.</li>
+      <li>One-click undo for the last move (per turn window).</li>
+      <li>Autosave: Game state persists locally; continue later.</li>
+      <li>Keyboard play: R to roll, 1–4 to pick a token.</li>
+    </ul>
+
+    <div class="hint">Tip: Hover or rotate to view angles. Click glowing tokens to act.</div>
+  </div>
+</dialog>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+// ---------- Basic three.js setup ----------
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0f19);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 1000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false;
+controls.minDistance = 18; controls.maxDistance = 65; controls.maxPolarAngle = Math.PI * 0.495;
+
+function resize(){
+  const w = canvas.clientWidth || canvas.parentElement.clientWidth;
+  const h = canvas.clientHeight || canvas.parentElement.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+const wrap = document.getElementById('canvas-wrap');
+function fitCanvas(){
+  const r = wrap.getBoundingClientRect();
+  canvas.style.width = r.width + 'px';
+  canvas.style.height = (r.height) + 'px';
+  resize();
+}
+window.addEventListener('resize', fitCanvas);
+fitCanvas();
+
+// Lights
+const amb = new THREE.AmbientLight(0xbcc5e3, 0.8); scene.add(amb);
+const dir = new THREE.DirectionalLight(0xffffff, 1.0); dir.position.set(20, 40, 20); scene.add(dir);
+const rim = new THREE.DirectionalLight(0x88bbff, 0.4); rim.position.set(-30, 25, -20); scene.add(rim);
+
+// Ground pad
+const ground = new THREE.Mesh(new THREE.CylinderGeometry(40, 40, 0.6, 72), new THREE.MeshStandardMaterial({ color:0x0a0f1e, metalness:.2, roughness:.8 }));
+ground.position.y = -0.4; scene.add(ground);
+
+// ---------- Game geometry (ring + home paths) ----------
+const COLORS = {
+  red:   { hex:0xd32f2f, css:'var(--red)'   },
+  blue:  { hex:0x1976d2, css:'var(--blue)'  },
+  yellow:{ hex:0xfbbf24, css:'var(--yellow)'},
+  green: { hex:0x22c55e, css:'var(--green)' },
+};
+const PLAYER_ORDER = ['red','blue','yellow','green'];
+const PLAYER_NAME = { red:'Red', blue:'Blue', yellow:'Yellow', green:'Green' };
+
+// 52 ring tiles around a circle (y=0 plane)
+const RING_COUNT = 52; const HOME_STEPS = 6; const TILE_SIZE = 1.2; const RADIUS = 18;
+const ringPositions = [];
+for (let i=0;i<RING_COUNT;i++){
+  const a = (i / RING_COUNT) * Math.PI*2;
+  const x = Math.cos(a) * RADIUS;
+  const z = Math.sin(a) * RADIUS;
+  ringPositions.push(new THREE.Vector3(x, 0, z));
+}
+
+// Per-player: start index spaced evenly 13 apart
+const startIndex = { red:0, blue:13, yellow:26, green:39 };
+const safeIndices = new Set([startIndex.red, startIndex.blue, startIndex.yellow, startIndex.green]);
+
+// Home stretch positions (toward center) per player
+const homePaths = { red:[], blue:[], yellow:[], green:[] };
+for (const p of PLAYER_ORDER){
+  const si = startIndex[p];
+  const a = (si / RING_COUNT) * Math.PI*2;
+  for (let k=0;k<HOME_STEPS;k++){
+    const t = (k+1)/(HOME_STEPS+1);
+    const x = Math.cos(a) * (RADIUS * (1 - t));
+    const z = Math.sin(a) * (RADIUS * (1 - t));
+    homePaths[p].push(new THREE.Vector3(x, 0, z));
+  }
+}
+
+// Visual tiles: ring
+const tileGroup = new THREE.Group(); scene.add(tileGroup);
+const tileGeom = new THREE.BoxGeometry(TILE_SIZE, 0.25, TILE_SIZE);
+const matDefault = new THREE.MeshStandardMaterial({ color:0x24314f, metalness:.1, roughness:.9 });
+const matsQuad = [0xd32f2f,0x1976d2,0xfbbf24,0x22c55e].map(c=>new THREE.MeshStandardMaterial({ color:c, metalness:.2, roughness:.7 }));
+const starMat = new THREE.MeshStandardMaterial({ color:0x6ee7f9, emissive:0x0d3d54, emissiveIntensity:.7, metalness:.4, roughness:.5 });
+
+// Lucky star tiles at four positions
+const STAR_TILES = [3,16,29,42];
+
+const ringTileMeshes = [];
+for (let i=0;i<RING_COUNT;i++){
+  const tile = new THREE.Mesh(tileGeom, matDefault.clone());
+  tile.position.copy(ringPositions[i]);
+  tile.position.y = 0.125;
+  tile.rotation.y = Math.atan2(tile.position.x, tile.position.z);
+  // Color quadrants subtly
+  const q = Math.floor((i / RING_COUNT) * 4);
+  const m = tile.material; m.color.lerp(new THREE.Color(matsQuad[q].color), 0.35);
+  // Safe tile ring highlight
+  if (safeIndices.has(i)){
+    m.emissive = new THREE.Color(matsQuad[q].color);
+    m.emissiveIntensity = 0.2;
+  }
+  tileGroup.add(tile);
+  ringTileMeshes.push(tile);
+
+  // Lucky star marker
+  if (STAR_TILES.includes(i)){
+    const tor = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.12, 10, 20), starMat);
+    tor.position.copy(tile.position); tor.position.y += 0.2; tor.rotation.x = Math.PI/2;
+    tileGroup.add(tor);
+  }
+}
+
+// Home stretch visuals per player
+const homeTileMeshes = { red:[], blue:[], yellow:[], green:[] };
+const homeMat = new THREE.MeshStandardMaterial({ color:0x2a375c, metalness:.2, roughness:.9});
+for (const p of PLAYER_ORDER){
+  for (let k=0;k<HOME_STEPS;k++){
+    const tile = new THREE.Mesh(tileGeom, homeMat.clone());
+    tile.position.copy(homePaths[p][k]); tile.position.y = 0.14;
+    const c = new THREE.Color(COLORS[p].hex);
+    tile.material.color.lerp(c, 0.45);
+    if (k === HOME_STEPS-1){ tile.material.emissive = c; tile.material.emissiveIntensity = .25; }
+    scene.add(tile);
+    homeTileMeshes[p].push(tile);
+  }
+}
+
+// Center hub
+const hub = new THREE.Mesh(new THREE.CylinderGeometry(3.8, 3.8, 0.5, 48), new THREE.MeshStandardMaterial({ color:0x0e1530, metalness:.4, roughness:.4 }));
+hub.position.y = 0.1; scene.add(hub);
+
+// Start nests (where tokens spawn)
+const nestGroup = new THREE.Group(); scene.add(nestGroup);
+function makeNest(x,z,color){
+  const g = new THREE.CylinderGeometry(2.2,2.2,0.32, 24);
+  const m = new THREE.MeshStandardMaterial({ color, metalness:.3, roughness:.7 });
+  const n = new THREE.Mesh(g,m); n.position.set(x,0.16,z); nestGroup.add(n); return n;
+}
+function polar(r, ang){ return new THREE.Vector3(Math.cos(ang)*r, 0.16, Math.sin(ang)*r); }
+const nest = {
+  red:    makeNest(...polar(RADIUS+6, (startIndex.red   /RING_COUNT)*Math.PI*2).toArray().slice(0,3)),
+  blue:   makeNest(...polar(RADIUS+6, (startIndex.blue  /RING_COUNT)*Math.PI*2).toArray().slice(0,3)),
+  yellow: makeNest(...polar(RADIUS+6, (startIndex.yellow/RING_COUNT)*Math.PI*2).toArray().slice(0,3)),
+  green:  makeNest(...polar(RADIUS+6, (startIndex.green /RING_COUNT)*Math.PI*2).toArray().slice(0,3)),
+};
+
+// ---------- Tokens ----------
+const tokenGeom = new THREE.SphereGeometry(0.5, 24, 16);
+function makeTokenMesh(color){
+  const body = new THREE.Mesh(tokenGeom, new THREE.MeshStandardMaterial({ color, metalness:.3, roughness:.4 }));
+  body.castShadow = false; body.receiveShadow = false; return body;
+}
+
+const TOKEN_PER_PLAYER = 4;
+const tokens = { red:[], blue:[], yellow:[], green:[] };
+
+// Arrange tokens within a nest in a 2x2
+function nestSlots(center){
+  const off = [ [-0.7,-0.7],[0.7,-0.7],[-0.7,0.7],[0.7,0.7] ];
+  return off.map(([dx,dz]) => new THREE.Vector3(center.x+dx, 0.6, center.z+dz));
+}
+const nestCenters = {
+  red: nest.red.position.clone(),
+  blue: nest.blue.position.clone(),
+  yellow: nest.yellow.position.clone(),
+  green: nest.green.position.clone(),
+};
+
+for (const p of PLAYER_ORDER){
+  const slots = nestSlots(nestCenters[p]);
+  for (let i=0;i<TOKEN_PER_PLAYER;i++){
+    const t = makeTokenMesh(COLORS[p].hex);
+    t.userData = { player:p, id:i, state:'home', ringIndex:null, steps:0, homeIndex:null };
+    t.position.copy(slots[i]);
+    scene.add(t); tokens[p].push(t);
+  }
+}
+
+// ---------- Dice (visual) ----------
+const diceGroup = new THREE.Group(); scene.add(diceGroup); diceGroup.position.set(0, 6.5, 0);
+const diceGeom = new THREE.BoxGeometry(1.6,1.6,1.6);
+const pip = (n)=> new THREE.MeshStandardMaterial({ color:0xf2f5ff, emissive:0x111, metalness:.2, roughness:.6 });
+const diceMats = [pip(1),pip(2),pip(3),pip(4),pip(5),pip(6)];
+const dice = new THREE.Mesh(diceGeom, diceMats); dice.castShadow = false; diceGroup.add(dice);
+
+// Predefined orientations so top face matches value (1..6)
+const FACE_ORIENT = {
+  1: new THREE.Euler(0, 0, 0),
+  2: new THREE.Euler(0, Math.PI/2, 0),
+  3: new THREE.Euler(Math.PI/2, 0, 0),
+  4: new THREE.Euler(-Math.PI/2, 0, 0),
+  5: new THREE.Euler(0, -Math.PI/2, 0),
+  6: new THREE.Euler(Math.PI, 0, 0),
+};
+
+function animateDiceTo(value){
+  const base = FACE_ORIENT[value];
+  const extra = new THREE.Euler(Math.random()*Math.PI*4, Math.random()*Math.PI*4, Math.random()*Math.PI*4);
+  const targetQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(base.x+extra.x, base.y+extra.y, base.z+extra.z));
+  const startQ = dice.quaternion.clone(); const dur = 650 + Math.random()*550; const t0 = performance.now();
+  return new Promise(res=>{
+    function spin(){
+      const t = (performance.now()-t0)/dur; const k = t<1?t:1; THREE.Quaternion.slerp(startQ, targetQ, dice.quaternion, 0.2*Math.sin(k*Math.PI)+k*0.8);
+      if (t<1) requestAnimationFrame(spin); else { dice.quaternion.copy(new THREE.Quaternion().setFromEuler(base)); res(); }
+    } requestAnimationFrame(spin);
+  });
+}
+
+// ---------- Camera ----------
+function placeCamera(){ camera.position.set(34, 34, 34); camera.lookAt(0,0,0); controls.update(); }
+placeCamera();
+
+// ---------- Game state & helpers ----------
+const ui = {
+  startBtn: document.getElementById('startBtn'),
+  rulesBtn: document.getElementById('rulesBtn'),
+  playersSelect: document.getElementById('playersSelect'),
+  rollBtn: document.getElementById('rollBtn'),
+  undoBtn: document.getElementById('undoBtn'),
+  turnBadge: document.getElementById('turnBadge'),
+  diceLabel: document.getElementById('diceLabel'),
+  cinemaCam: document.getElementById('cinemaCam'),
+  toast: document.getElementById('toast'),
+  rulesModal: document.getElementById('rulesModal'),
+};
+
+let game = {
+  players: 2,
+  order: ['red','blue','yellow','green'],
+  activeCount: 2,
+  turnIdx: 0,
+  rolled: null,
+  canUndo: null,
+  finished: false,
+  history: [],
+  autosaveKey: 'nl3d-ludo-v1',
+  ai: { blue:true, yellow:true, green:true },
+};
+
+function activePlayers(){ return game.order.slice(0, game.activeCount); }
+function activePlayer(){ return activePlayers()[game.turnIdx]; }
+function setTurnBadge(){
+  const p = activePlayer();
+  ui.turnBadge.textContent = PLAYER_NAME[p];
+  ui.turnBadge.style.background = getComputedStyle(document.documentElement).getPropertyValue(COLORS[p].css);
+}
+function setDiceLabel(n){ ui.diceLabel.textContent = `🎲 ${n ?? '–'}`; }
+function setToast(msg, t=1800){ ui.toast.textContent = msg; ui.toast.style.display='block'; clearTimeout(ui.toast._t); ui.toast._t = setTimeout(()=>ui.toast.style.display='none', t); }
+
+function tokenStateAll(){
+  const out = [];
+  for (const p of PLAYER_ORDER){ for (const t of tokens[p]) out.push({ p, id:t.userData.id, state:{...t.userData} }); }
+  return out;
+}
+function restoreTokenStates(states){
+  for (const s of states){
+    const t = tokens[s.p][s.id];
+    t.userData = { ...t.userData, ...s.state };
+    placeToken(t); // snap
+  }
+}
+
+function save(){ try{ localStorage.setItem(game.autosaveKey, JSON.stringify({
+  g:{...game, canUndo:null, history:[]},
+  tokens: tokenStateAll(),
+})); }catch(e){} }
+
+function load(){ try{
+  const raw = localStorage.getItem(game.autosaveKey); if(!raw) return false; const data = JSON.parse(raw);
+  const g = data.g; game = { ...game, ...g };
+  restoreTokenStates(data.tokens);
+  setTurnBadge(); setDiceLabel(game.rolled); return true;
+} catch(e){ return false; } }
+
+// Position a token per its userData
+function placeToken(t){
+  const ud = t.userData;
+  if (ud.state === 'home'){
+    // put back to nest slot
+    const slots = nestSlots(nestCenters[ud.player]);
+    const idx = ud.id % 4; const pos = slots[idx];
+    t.position.copy(pos);
+  } else if (ud.state === 'ring'){
+    t.position.copy(ringPositions[ud.ringIndex]); t.position.y = 0.62;
+  } else if (ud.state === 'homestretch'){
+    t.position.copy(homePaths[ud.player][ud.homeIndex]); t.position.y = 0.62;
+  } else if (ud.state === 'finished'){
+    const c = homePaths[ud.player][HOME_STEPS-1].clone(); c.y = 1.1; t.position.copy(c);
+  }
+}
+
+function isHuman(p){ return p==='red'; }
+function isAI(p){ return !isHuman(p); }
+
+// Compute legal moves given a roll
+function legalMoves(p, roll){
+  const L = [];
+  for (const t of tokens[p]){
+    const ud = t.userData; if (ud.state==='finished') continue;
+    if (ud.state==='home'){
+      if (roll===6){ // can enter start if not blocked by opponent stack? In Ludo, stack allowed for same color; capture if opponent present and not safe? Start is safe so no capture.
+        L.push({ t, kind:'enter', from:null, toIndex:startIndex[p] });
+      }
+    } else if (ud.state==='ring'){
+      const nextSteps = ud.steps + roll;
+      if (nextSteps < 52){
+        const toIndex = (ud.ringIndex + roll) % RING_COUNT;
+        L.push({ t, kind:'ring', from:ud.ringIndex, toIndex });
+      } else {
+        // Into home stretch
+        const into = nextSteps - 52; // 1..6 possibly
+        if (into <= HOME_STEPS){
+          const toHome = into - 1; // 0-based
+          // need exact landing inside homestretch
+          L.push({ t, kind:'enterHome', toHome });
+        }
+      }
+    } else if (ud.state==='homestretch'){
+      const to = ud.homeIndex + roll; if (to === HOME_STEPS){ L.push({ t, kind:'finish' }); }
+      else if (to < HOME_STEPS){ L.push({ t, kind:'home', toHome:to }); }
+    }
+  }
+  return L;
+}
+
+function tileOccupantsOnRing(idx){
+  const occ = [];
+  for (const p of activePlayers()){
+    for (const t of tokens[p]){
+      if (t.userData.state==='ring' && t.userData.ringIndex===idx) occ.push(t);
+    }
+  }
+  return occ;
+}
+
+function captureIfNeeded(p, idx){
+  if (safeIndices.has(idx)) return []; // safe tile
+  const occ = tileOccupantsOnRing(idx).filter(t=>t.userData.player!==p);
+  for (const e of occ){ e.userData = { ...e.userData, state:'home', ringIndex:null, steps:0, homeIndex:null }; placeToken(e); }
+  return occ;
+}
+
+// Simple move animator (tile-by-tile)
+function moveAlongRing(t, steps){
+  return new Promise(async (resolve)=>{
+    for (let s=0;s<steps;s++){
+      const fromIdx = t.userData.ringIndex;
+      const toIdx = (fromIdx + 1) % RING_COUNT; const from = ringPositions[fromIdx]; const to = ringPositions[toIdx];
+      await tweenToken(t, from, to, 160);
+      t.userData.ringIndex = toIdx; t.userData.steps += 1; placeToken(t);
+    }
+    resolve();
+  });
+}
+
+function tweenToken(t, a, b, dur){
+  return new Promise((res)=>{
+    const start = performance.now();
+    const y0 = t.position.y; const yPeak = y0 + 0.25;
+    function anim(){
+      const k = Math.min(1, (performance.now()-start)/dur);
+      t.position.lerpVectors(a, b, k);
+      // hop
+      t.position.y = y0 + Math.sin(k*Math.PI)*0.25; if (k<1) requestAnimationFrame(anim); else { t.position.y = y0; res(); }
+    }
+    requestAnimationFrame(anim);
+  });
+}
+
+function tweenTo(t, target, dur){
+  return new Promise((res)=>{
+    const start = performance.now(); const from = t.position.clone(); const y0 = from.y;
+    function anim(){ const k=Math.min(1, (performance.now()-start)/dur); t.position.lerpVectors(from,target,k); t.position.y = y0 + Math.sin(k*Math.PI)*0.25; if(k<1) requestAnimationFrame(anim); else res(); }
+    requestAnimationFrame(anim);
+  });
+}
+
+async function performMove(mv, rolled){
+  const p = mv.t.userData.player;
+  const preState = tokenStateAll();
+  // Camera FX
+  if (ui.cinemaCam.checked){
+    const pos = mv.t.position.clone(); const dirV = pos.clone().normalize();
+    const camPos = pos.clone().addScaledVector(dirV, 8).add(new THREE.Vector3(0,6,0));
+    await smoothCamera(camPos, pos.clone().setY(0));
+  }
+
+  if (mv.kind==='enter'){
+    mv.t.userData = { ...mv.t.userData, state:'ring', ringIndex: startIndex[p], steps:0, homeIndex:null };
+    await tweenTo(mv.t, ringPositions[startIndex[p]].clone().setY(0.62), 220);
+    const cap = captureIfNeeded(p, startIndex[p]);
+    placeToken(mv.t);
+  }
+  else if (mv.kind==='ring'){
+    await moveAlongRing(mv.t, rolled);
+    const cap = captureIfNeeded(p, mv.t.userData.ringIndex);
+  }
+  else if (mv.kind==='enterHome'){
+    // Move remaining steps into home
+    const remain = (mv.t.userData.steps + rolled) - 52; // steps entering home
+    // Walk on ring until entry
+    if (mv.t.userData.steps < 52){
+      await moveAlongRing(mv.t, 52 - mv.t.userData.steps);
+    }
+    const idx = remain-1; mv.t.userData = { ...mv.t.userData, state:'homestretch', ringIndex:null, homeIndex:idx };
+    await tweenTo(mv.t, homePaths[p][idx].clone().setY(0.62), 220);
+  }
+  else if (mv.kind==='home'){
+    mv.t.userData.homeIndex = mv.toHome; await tweenTo(mv.t, homePaths[p][mv.toHome].clone().setY(0.62), 200);
+  }
+  else if (mv.kind==='finish'){
+    mv.t.userData = { ...mv.t.userData, state:'finished', homeIndex:HOME_STEPS-1 };
+    await tweenTo(mv.t, homePaths[p][HOME_STEPS-1].clone().setY(1.12), 240);
+  }
+
+  // Bonus: Lucky star roll
+  let bonus = false;
+  if (mv.kind==='ring' || mv.kind==='enter'){
+    const idx = mv.t.userData.ringIndex; if (STAR_TILES.includes(idx)) bonus = true;
+  }
+
+  game.canUndo = preState;
+  save();
+  return { bonus };
+}
+
+function hasWon(p){ return tokens[p].every(t=>t.userData.state==='finished'); }
+
+function nextTurn(extra=false){
+  if (!extra){ game.turnIdx = (game.turnIdx + 1) % game.activeCount; }
+  setTurnBadge(); game.rolled = null; setDiceLabel(null); enableRoll(true);
+}
+
+function enableRoll(on){ ui.rollBtn.disabled = !on || game.finished; }
+function enableUndo(on){ ui.undoBtn.disabled = !on; }
+
+// ---------- AI ----------
+function pickAIMove(p, roll, moves){
+  // Priority: capturing moves > progress toward finish > entering board
+  const copy = moves.slice();
+  // Tag capture potential
+  for (const mv of copy){
+    if (mv.kind==='ring'){
+      const toIdx = (mv.t.userData.ringIndex + roll) % RING_COUNT;
+      mv.capture = tileOccupantsOnRing(toIdx).some(t=>t.userData.player!==p) && !safeIndices.has(toIdx);
+    } else if (mv.kind==='enter'){
+      const toIdx = startIndex[p];
+      mv.capture = tileOccupantsOnRing(toIdx).some(t=>t.userData.player!==p) && !safeIndices.has(toIdx);
+    } else mv.capture = false;
+  }
+  const byCap = copy.filter(m=>m.capture);
+  if (byCap.length) return byCap[Math.floor(Math.random()*byCap.length)];
+  // Prefer token furthest progressed (more steps)
+  copy.sort((a,b)=> (b.t.userData.steps ?? 0) - (a.t.userData.steps ?? 0));
+  return copy[0];
+}
+
+// ---------- Turn flow ----------
+let selecting = false; let currentMoves = [];
+
+async function roll(){
+  if (game.finished) return; enableRoll(false); enableUndo(false);
+  const v = 1 + Math.floor(Math.random()*6); game.rolled = v; setDiceLabel(v);
+  await animateDiceTo(v);
+  const p = activePlayer();
+  const moves = legalMoves(p, v);
+  currentMoves = moves; selecting = true;
+  if (!moves.length){ setToast('No moves — turn passes'); return nextTurn(false); }
+  if (isAI(p)){
+    const mv = pickAIMove(p, v, moves);
+    const { bonus } = await performMove(mv, v);
+    if (hasWon(p)){ game.finished = true; setToast(`${PLAYER_NAME[p]} wins! 🎉`, 4000); return; }
+    enableUndo(true);
+    return nextTurn(v===6 || bonus);
+  } else {
+    highlightMoves(moves, true); setToast('Pick a glowing token');
+  }
+}
+
+function highlightMoves(moves, on){
+  for (const mv of moves){
+    const t = mv.t; t.material.emissive = new THREE.Color(0xffffff); t.material.emissiveIntensity = on?0.35:0;
+  }
+}
+
+async function onTokenClick(obj){
+  if (!selecting) return; const p = activePlayer(); if (obj.userData?.player !== p) return;
+  const mv = currentMoves.find(m=>m.t===obj); if (!mv) return;
+  selecting = false; highlightMoves(currentMoves,false);
+  const { bonus } = await performMove(mv, game.rolled);
+  if (hasWon(p)){ game.finished = true; setToast(`${PLAYER_NAME[p]} wins! 🎉`, 4000); return; }
+  enableUndo(true);
+  nextTurn(game.rolled===6 || bonus);
+}
+
+async function smoothCamera(pos, look){
+  const fromP = camera.position.clone(); const fromT = controls.target.clone(); const t0=performance.now(); const dur=500;
+  return new Promise(res=>{
+    function step(){ const k=Math.min(1,(performance.now()-t0)/dur); camera.position.lerpVectors(fromP,pos,k); controls.target.lerpVectors(fromT,look,k); controls.update(); if(k<1) requestAnimationFrame(step); else res(); }
+    requestAnimationFrame(step);
+  });
+}
+
+// ---------- Interaction ----------
+const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2();
+function onPointer(ev){
+  const r = canvas.getBoundingClientRect();
+  pointer.x = ((ev.clientX - r.left)/r.width)*2 - 1;
+  pointer.y = -((ev.clientY - r.top)/r.height)*2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const intersects = raycaster.intersectObjects([].concat(...activePlayers().map(p=>tokens[p])));
+  if (intersects.length){ onTokenClick(intersects[0].object); }
+}
+canvas.addEventListener('pointerdown', onPointer);
+
+window.addEventListener('keydown', (e)=>{
+  if (e.key==='r' || e.key==='R') roll();
+  if ('1234'.includes(e.key) && isHuman(activePlayer()) && currentMoves.length){
+    const idx = Number(e.key)-1; const mine = currentMoves.filter(m=>m.t.userData.player===activePlayer()); if (mine[idx]) onTokenClick(mine[idx].t);
+  }
+});
+
+// ---------- UI events ----------
+ui.rollBtn.addEventListener('click', roll);
+ui.undoBtn.addEventListener('click', ()=>{
+  if (!game.canUndo) return; restoreTokenStates(game.canUndo); game.canUndo = null; enableUndo(false); save(); setToast('Undone');
+});
+ui.startBtn.addEventListener('click', ()=>{
+  // Reset game
+  const pcount = Number(ui.playersSelect.value);
+  game = { ...game, activeCount:pcount, turnIdx:0, rolled:null, finished:false, canUndo:null };
+  for (const p of PLAYER_ORDER){ for (const t of tokens[p]){ t.userData = { player:p, id:t.userData.id, state:'home', ringIndex:null, steps:0, homeIndex:null }; placeToken(t); } }
+  game.ai = { blue: true, yellow: pcount>=3, green: pcount>=4 };
+  setTurnBadge(); setDiceLabel(null); enableRoll(true); enableUndo(false); save(); setToast('New game!');
+});
+ui.rulesBtn.addEventListener('click', ()=> ui.rulesModal.showModal());
+
+// ---------- Initial state ----------
+setTurnBadge(); setDiceLabel(null); enableRoll(true); enableUndo(false);
+load();
+
+// ---------- Main loop ----------
+function loop(){ controls.update(); renderer.render(scene,camera); requestAnimationFrame(loop); }
+loop();
+
+</script>
+</body>
+</html>
