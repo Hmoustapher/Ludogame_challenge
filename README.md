@@ -1,4 +1,4 @@
-# 🎲 Nairaland 3D Ludo Game
+# 🎲 3D Ludo Game
 
 <p align="center">
   <img src="./images/game-screenshot.png" alt="Nairaland 3D Ludo Game" width="700">
