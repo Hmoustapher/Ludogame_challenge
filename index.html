@@ -84,6 +84,15 @@
     .btn::after{content:""; position:absolute; inset:auto; width:0; height:0; border-radius:50%; background:radial-gradient(circle, rgba(255,255,255,.35), transparent 60%); transform:translate(-50%,-50%); pointer-events:none}
     .btn:active::after{width:180px; height:180px; top:var(--y,50%); left:var(--x,50%); transition:width .25s ease, height .25s ease}
 
+    /* CTA pulses for better guidance */
+    @keyframes pulse-glow{0%{box-shadow:0 0 0 0 rgba(110,231,249,.45)}70%{box-shadow:0 0 0 12px rgba(110,231,249,0)}100%{box-shadow:0 0 0 0 rgba(110,231,249,0)}}
+    .pulse{animation:pulse-glow 1.6s ease-out infinite}
+    @keyframes jiggle{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+    .jiggle{animation:jiggle .6s ease-in-out infinite}
+
+    /* Ensure header is always above splash */
+    header{position:relative; z-index:10}
+
     /* CTA pulses */
     @keyframes pulse-glow{0%{box-shadow:0 0 0 0 rgba(110,231,249,.45)}70%{box-shadow:0 0 0 12px rgba(110,231,249,0)}100%{box-shadow:0 0 0 0 rgba(110,231,249,0)}}
     .pulse{animation:pulse-glow 1.6s ease-out infinite}
@@ -164,6 +173,17 @@
   
 </div>
 
+<!-- Fallback: hide splash after a short delay if modules fail to load -->
+<script>
+  window.__nlSplashTimeout = setTimeout(function(){
+    var sp = document.getElementById('splash'); if (sp) sp.classList.add('hide');
+  }, 2500);
+  window.addEventListener('load', function(){
+    // As a secondary guard, if rendering is okay this will get cleared by the module
+  });
+  
+</script>
+
 <dialog id="rulesModal">
   <div class="modal-header">
     <div style="font-weight:800">3D Ludo — Rules & Features</div>
@@ -199,6 +219,8 @@
 </dialog>
 
 <script type="module">
+// Clear splash fallback if module loads fine
+try{ if (window.__nlSplashTimeout) { clearTimeout(window.__nlSplashTimeout); } }catch(e){}
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
