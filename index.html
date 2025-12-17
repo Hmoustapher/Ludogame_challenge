@@ -65,6 +65,9 @@
     .cb-row .spacer { flex:1; }
     .turn-badge { padding:.4rem .8rem; border-radius:999px; font-weight:800; letter-spacing:.3px; background: rgba(0,212,255,0.15); border:1px solid var(--border); }
     .dice-chip { padding:.4rem .8rem; border-radius:10px; font-weight:800; color:var(--accent); background: rgba(255,214,10,0.12); border:1px solid rgba(255,214,10,0.35); min-width:92px; text-align:center; }
+    .shortcut-hints { color: var(--text-muted); font-size: .85rem; display:flex; align-items:center; gap:.75rem; opacity:.85; }
+    .shortcut-hints .group { display:flex; align-items:center; gap:.4rem; }
+    .kbd { display:inline-block; padding:.1rem .4rem; border:1px solid var(--border); border-radius:6px; background: rgba(255,255,255,0.06); color: var(--text-light); font-weight:700; font-size:.8rem; }
 
     footer { background: rgba(26,31,58,0.95); border-top: 1px solid var(--border); padding: .75rem 1rem; text-align:center; color: var(--text-muted); font-size:.9rem; }
 
@@ -108,6 +111,13 @@
           <div class="cb-row" style="justify-content:center; gap:.75rem;">
             <button id="rollBtn" class="btn primary" style="min-width:160px;">Roll</button>
             <button id="undoBtn" class="btn" style="min-width:120px;">Undo</button>
+          </div>
+          <div class="cb-row" style="justify-content:center;">
+            <div class="shortcut-hints">
+              <div class="group"><span class="kbd">S</span> Snapshot</div>
+              <div class="group"><span class="kbd">H</span> Hero</div>
+              <div class="group"><span class="kbd">D</span> Dice</div>
+            </div>
           </div>
         </div>
       </div>
