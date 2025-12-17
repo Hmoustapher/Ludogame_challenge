@@ -1,4 +1,4 @@
-# 🎲 3D Ludo Game
+# 🎲 Nairaland 3D Ludo Game Challenge
 
 <p align="center">
   <img src="./images/game-screenshot.png" alt="Nairaland 3D Ludo Game" width="700">
@@ -12,7 +12,7 @@
 
 ## 🌟 Overview
 
-**Nairaland 3D Ludo** is a complete implementation of the classic board game, featuring beautiful 3D graphics and smooth animations. Built using **three.js** and delivered as a single HTML file for maximum portability and ease of use.
+**3D Ludo** is a complete implementation of the classic board game, featuring beautiful 3D graphics and smooth animations. Built using **three.js** and delivered as a single HTML file for maximum portability and ease of use. 
 
 Created for the **Nairaland Coding Challenge (December 2025)**, this project showcases modern web technologies without requiring any build tools or external dependencies beyond the three.js CDN.
 
@@ -23,11 +23,26 @@ Created for the **Nairaland Coding Challenge (December 2025)**, this project sho
 ### Playing the Game
 
 1. **Download** the `index.html` file
-2. **Open** it in any modern browser (Chrome, Firefox, or Edge recommended)
+2. **Open** it directly in any modern browser (Chrome, Firefox, or Edge recommended)
 3. **Click** "Start Game" and select the number of players (2-4)
 4. **Enjoy** the game! 
 
 > **No installation required** – just open and play!
+
+### Local Development Server (Recommended for Best Experience)
+
+To avoid potential CORS issues and get faster loading:
+
+```bash
+# Navigate to the folder containing index.html
+cd /path/to/your/game/folder
+
+# Run a simple local server (requires Python)
+python -m http.server 8080
+
+# Then open your browser and go to:
+# http://127.0.0.1:8080/
+```
 
 ---
 
@@ -93,7 +108,7 @@ All traditional Ludo rules are faithfully implemented:
 
 - Get **all 4 of your tokens** to the center hub before your opponents
 - Must roll **exact number** needed to enter the center
-- First player to finish wins!  🏆
+- First player to finish wins! 🏆
 
 ---
 
@@ -126,15 +141,15 @@ All traditional Ludo rules are faithfully implemented:
 
 ### Architecture Highlights
 
-- **Single HTML file**:  Entire game contained in one portable file
+- **Single HTML file**: Entire game contained in one portable file
 - **No build process**: Pure vanilla JavaScript with ES6 modules
-- **CDN-based**: Uses three.js v0.160.0 from CDN (no local dependencies)
-- **Performance optimized**: Efficient geometry reuse and minimal object creation
+- **CDN-based**: Uses three. js v0.160.0 from CDN (no local dependencies)
+- **Performance optimized**:  Efficient geometry reuse and minimal object creation
 - **Responsive canvas**:  Automatically adapts to screen dimensions
 
 ### Technologies Used
 
-- **[three.js](https://threejs.org/)** – 3D graphics rendering
+- **[three. js](https://threejs.org/)** – 3D graphics rendering
 - **Vanilla JavaScript** – Game logic and interactivity
 - **CSS3** – Modern styling with animations
 - **LocalStorage API** – Game state persistence
@@ -166,24 +181,26 @@ All traditional Ludo rules are faithfully implemented:
   <em>Realistic 3D dice with smooth rolling physics</em>
 </p>
 
+> **Note**: Replace placeholders with actual screenshots from your `C:/Users/hp/Pictures/debug/Nl_ludogamechallenge_project` folder
+
 ---
 
 ## 🙏 Acknowledgments
 
 This game was developed with assistance from **Grok (xAI)** for planning, debugging, and optimization. All code is original and contained within a single file.
 
-Special thanks to the **Nairaland community** for inspiring this project through the December 2025 Coding Challenge. 
+Special thanks to the **Nairaland community** for inspiring this project through the December 2025 Coding Challenge.  
 
 ---
 
 ## 📄 License
 
 **Free and open** to use, modify, and share.   
-Built with ❤️ for the **Nairaland community**. 
+Built with ❤️ Open for Collaboration and work hmoustapher@gmail.com**. 
 
 ---
 
-## 🎮 Ready to Play?
+## 🎮 Ready to Play? 
 
 **[Download the game](./index.html)** and start playing now! 
 
