@@ -20,7 +20,7 @@
     :root[data-theme="light"] body{color-scheme:light;}
     #app{position:fixed; inset:0; display:grid; grid-template-rows:auto 1fr auto;}
 
-    header{display:flex; align-items:center; gap:.75rem; padding:.65rem .9rem; background:linear-gradient(180deg,rgba(22,28,44,.9),rgba(14,16,22,.9)); border-bottom:1px solid var(--stroke-2); backdrop-filter:saturate(140%) blur(8px);}
+    header{display:flex; align-items:center; gap:.75rem; padding:.65rem .9rem; background:linear-gradient(180deg,rgba(22,28,44,.9),rgba(14,16,22,.9)); border-bottom:1px solid var(--stroke-2); backdrop-filter:saturate(140%) blur(8px); position:relative; z-index:3}
     :root[data-theme="light"] header{background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,.55));}
     header .brand{display:flex; align-items:center; gap:.6rem}
     header .dot{width:10px;height:10px;border-radius:50%; box-shadow:0 0 10px rgba(110,231,249,.7)}
@@ -84,6 +84,12 @@
     .btn::after{content:""; position:absolute; inset:auto; width:0; height:0; border-radius:50%; background:radial-gradient(circle, rgba(255,255,255,.35), transparent 60%); transform:translate(-50%,-50%); pointer-events:none}
     .btn:active::after{width:180px; height:180px; top:var(--y,50%); left:var(--x,50%); transition:width .25s ease, height .25s ease}
 
+    /* CTA pulses */
+    @keyframes pulse-glow{0%{box-shadow:0 0 0 0 rgba(110,231,249,.45)}70%{box-shadow:0 0 0 12px rgba(110,231,249,0)}100%{box-shadow:0 0 0 0 rgba(110,231,249,0)}}
+    .pulse{animation:pulse-glow 1.6s ease-out infinite}
+    @keyframes jiggle{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+    .jiggle{animation:jiggle .6s ease-in-out infinite}
+
     /* Scrollbar */
     ::-webkit-scrollbar{height:10px; width:10px}
     ::-webkit-scrollbar-thumb{background:#273451; border-radius:10px}
@@ -111,7 +117,7 @@
       <span>Camera FX</span>
     </label>
     <button id="themeBtn" class="btn" title="Toggle theme">Theme</button>
-    <button id="startBtn" class="btn primary">Start Game</button>
+    <button id="startBtn" class="btn primary" title="Start a new game" aria-label="Start Game">Start Game</button>
     <button id="rulesBtn" class="btn rules-btn">Rules</button>
   </header>
   <div id="canvas-wrap">
@@ -430,14 +436,24 @@ let game = {
   history: [],
   autosaveKey: 'nl3d-ludo-v1',
   ai: { blue:true, yellow:true, green:true },
+  hasStarted: false,
 };
 
 function activePlayers(){ return game.order.slice(0, game.activeCount); }
 function activePlayer(){ return activePlayers()[game.turnIdx]; }
+function updateCTAs(){
+  // Start button pulse before first game
+  if (!game.hasStarted) ui.startBtn.classList.add('pulse'); else ui.startBtn.classList.remove('pulse');
+  // Roll button jiggle when it's human's turn and no roll yet
+  const humanTurn = activePlayer()==='red' && !game.finished && game.rolled==null;
+  ui.rollBtn.classList.toggle('jiggle', humanTurn);
+}
+
 function setTurnBadge(){
   const p = activePlayer();
   ui.turnBadge.textContent = PLAYER_NAME[p];
   ui.turnBadge.style.background = getComputedStyle(document.documentElement).getPropertyValue(COLORS[p].css);
+  updateCTAs();
 }
 function setDiceLabel(n){ ui.diceLabel.textContent = `🎲 ${n ?? '–'}`; }
 function setToast(msg, t=1800){ ui.toast.textContent = msg; ui.toast.style.display='block'; clearTimeout(ui.toast._t); ui.toast._t = setTimeout(()=>ui.toast.style.display='none', t); }
@@ -723,10 +739,10 @@ ui.undoBtn.addEventListener('click', ()=>{
 ui.startBtn.addEventListener('click', ()=>{
   // Reset game
   const pcount = Number(ui.playersSelect.value);
-  game = { ...game, activeCount:pcount, turnIdx:0, rolled:null, finished:false, canUndo:null };
+  game = { ...game, activeCount:pcount, turnIdx:0, rolled:null, finished:false, canUndo:null, hasStarted:true };
   for (const p of PLAYER_ORDER){ for (const t of tokens[p]){ t.userData = { player:p, id:t.userData.id, state:'home', ringIndex:null, steps:0, homeIndex:null }; placeToken(t); } }
   game.ai = { blue: true, yellow: pcount>=3, green: pcount>=4 };
-  setTurnBadge(); setDiceLabel(null); enableRoll(true); enableUndo(false); save(); setToast('New game!');
+  setTurnBadge(); setDiceLabel(null); enableRoll(true); enableUndo(false); updateCTAs(); save(); setToast('New game!');
 });
 ui.rulesBtn.addEventListener('click', ()=> ui.rulesModal.showModal());
 
@@ -747,6 +763,8 @@ document.querySelectorAll('.btn').forEach(btn=>{
 // ---------- Initial state ----------
 setTurnBadge(); setDiceLabel(null); enableRoll(true); enableUndo(false);
 load();
+updateCTAs();
+if (!game.hasStarted) setToast('Click Start Game to begin');
 
 // ---------- Main loop ----------
 let firstFrame = true;
