@@ -3,6 +3,2225 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎮 Ludo Game - Single & Multiplayer</title>
+    <style>
+      /* ===== CSS RESET & BASE STYLES ===== */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: white;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* ===== START SCREEN ===== */
+      .start-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        padding: 16px;
+        overflow-y: auto;
+        text-align: center;
+      }
+
+      .game-title {
+        font-size: 4.5rem;
+        font-weight: 800;
+        background: linear-gradient(45deg, #ff3b5c, #00d4ff, #00e676);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 10px;
+        text-shadow: 0 0 30px rgba(255, 59, 92, 0.3);
+        animation: titleGlow 3s infinite alternate;
+      }
+
+      @keyframes titleGlow {
+        0% {
+          text-shadow: 0 0 20px rgba(255, 59, 92, 0.5);
+        }
+        100% {
+          text-shadow: 0 0 40px rgba(0, 212, 255, 0.5);
+        }
+      }
+
+      .game-subtitle {
+        font-size: 1.15rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 24px;
+        max-width: 600px;
+        line-height: 1.6;
+      }
+
+      /* ===== GAME MODES ===== */
+      .game-modes {
+        display: flex;
+        gap: 16px;
+        margin: 20px 0;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .mode-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 22px 16px;
+        width: 280px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .mode-card:hover {
+        transform: translateY(-10px);
+        border-color: rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+      }
+
+      .mode-card.active {
+        border-color: #00d4ff;
+        background: rgba(0, 212, 255, 0.1);
+        box-shadow: 0 0 30px rgba(0, 212, 255, 0.2);
+      }
+
+      .mode-icon {
+        font-size: 3rem;
+        margin-bottom: 14px;
+        height: 80px;
+        width: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+      }
+
+      .single-player .mode-icon {
+        background: linear-gradient(45deg, #ff3b5c, #ff6b8b);
+        color: white;
+      }
+
+      .multiplayer .mode-icon {
+        background: linear-gradient(45deg, #00d4ff, #00a8ff);
+        color: white;
+      }
+
+      .mode-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: white;
+      }
+
+      .mode-description {
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.5;
+        font-size: 0.95rem;
+      }
+
+      /* ===== PLAYER SELECTION ===== */
+      .player-selection {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 16px;
+        margin: 16px 0;
+        max-width: 800px;
+        width: 92%;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .selection-title {
+        font-size: 1.4rem;
+        text-align: center;
+        margin-bottom: 12px;
+        color: #00d4ff;
+      }
+
+      .player-options {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      @media (max-width: 768px) {
+        .player-options {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .player-option {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .player-option:hover {
+        background: rgba(255, 255, 255, 0.08);
+        transform: translateY(-5px);
+      }
+
+      .player-option.selected {
+        border-color: #00d4ff;
+        background: rgba(0, 212, 255, 0.1);
+      }
+
+      .player-color {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-bottom: 15px;
+        border: 3px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .player-red .player-color {
+        background: #ff3b5c;
+      }
+      .player-green .player-color {
+        background: #00e676;
+      }
+      .player-blue .player-color {
+        background: #4361ee;
+      }
+      .player-yellow .player-color {
+        background: #ffb74d;
+      }
+
+      .player-name {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+
+      .player-type {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.6);
+        padding: 5px 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        display: inline-block;
+      }
+
+      .type-human {
+        background: rgba(0, 212, 255, 0.2);
+        color: #00d4ff;
+      }
+      .type-ai {
+        background: rgba(255, 59, 92, 0.2);
+        color: #ff3b5c;
+      }
+
+      /* ===== BUTTONS ===== */
+      .action-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 16px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        background: linear-gradient(45deg, #4361ee, #3a0ca3);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: center;
+        max-width: 100%;
+      }
+
+      .btn:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(67, 97, 238, 0.4);
+      }
+
+      .btn-primary {
+        background: linear-gradient(45deg, #00d4ff, #0097e6);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .btn-icon {
+        font-size: 1.3rem;
+      }
+
+      /* ===== GAME CONTAINER ===== */
+      .game-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #0a0a1a;
+        display: none;
+        flex-direction: column;
+        z-index: 900;
+      }
+
+      .game-container.active {
+        display: flex;
+      }
+
+      /* ===== GAME HEADER ===== */
+      .game-header {
+        background: rgba(15, 15, 30, 0.9);
+        padding: 12px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        z-index: 100;
+      }
+
+      .game-title-small {
+        font-size: 1.8rem;
+        font-weight: 700;
+        background: linear-gradient(45deg, #ff3b5c, #00d4ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .game-mode-display {
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .game-controls {
+        display: flex;
+        gap: 10px;
+      }
+
+      .control-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+      }
+
+      .control-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+      }
+
+      /* ===== GAME CONTENT ===== */
+      .game-content {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      /* ===== LUDO BOARD CONTAINER ===== */
+      .board-container {
+        flex: 3;
+        min-width: 300px;
+        position: relative;
+        background: #0f0f1e;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        overflow: auto;
+      }
+
+      /* Ludo Grid Board Styles (from GitHub repo) */
+      .ludo-container {
+        display: grid;
+        grid-template-columns: repeat(15, minmax(25px, 1fr));
+        grid-template-rows: repeat(15, minmax(25px, 1fr));
+        gap: 1px;
+        background: #fff;
+        border-radius: 10px;
+        border: 3px solid #333;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        max-width: 600px;
+        aspect-ratio: 1/1;
+        position: relative;
+      }
+
+      @media (max-width: 768px) {
+        .ludo-container {
+          grid-template-columns: repeat(15, minmax(20px, 1fr));
+          grid-template-rows: repeat(15, minmax(20px, 1fr));
+        }
+      }
+
+      .cell {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+      }
+
+      .home {
+        background-color: #f0f0f0;
+      }
+
+      .safe {
+        background-color: #ffeb3b !important;
+      }
+
+      .red {
+        background-color: #ff3b5c !important;
+      }
+
+      .green {
+        background-color: #00e676 !important;
+      }
+
+      .blue {
+        background-color: #4361ee !important;
+      }
+
+      .yellow {
+        background-color: #ffb74d !important;
+      }
+
+      .path {
+        background-color: #fff;
+      }
+
+      .red-home {
+        background-color: #ff3b5c;
+        border: 2px solid #d32f2f;
+      }
+
+      .green-home {
+        background-color: #00e676;
+        border: 2px solid #388e3c;
+      }
+
+      .blue-home {
+        background-color: #4361ee;
+        border: 2px solid #1976d2;
+      }
+
+      .yellow-home {
+        background-color: #ffb74d;
+        border: 2px solid #fbc02d;
+      }
+
+      /* ===== PIECES ===== */
+      .piece {
+        width: 70%;
+        height: 70%;
+        border-radius: 50%;
+        position: absolute;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 10;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 10px;
+        font-weight: bold;
+        color: #000;
+        border: 2px solid white;
+      }
+
+      .piece.red {
+        background-color: #ff3b5c;
+        border-color: #ff6b8b;
+      }
+
+      .piece.green {
+        background-color: #00e676;
+        border-color: #00ff9d;
+      }
+
+      .piece.blue {
+        background-color: #4361ee;
+        border-color: #6c8eff;
+      }
+
+      .piece.yellow {
+        background-color: #ffb74d;
+        border-color: #ffd699;
+      }
+
+      .piece.selected {
+        box-shadow: 0 0 0 3px #fff, 0 0 0 5px #333;
+        transform: scale(1.2);
+      }
+
+      /* ===== SIDEBAR ===== */
+      .game-sidebar {
+        flex: 1;
+        min-width: 320px;
+        background: rgba(15, 15, 30, 0.9);
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        overflow-y: auto;
+        backdrop-filter: blur(10px);
+      }
+
+      /* ===== DICE SECTION ===== */
+      .dice-section {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .dice-title {
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+        color: #00d4ff;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .dice-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .dice {
+        width: 100px;
+        height: 100px;
+        background: white;
+        border-radius: 15px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 48px;
+        font-weight: bold;
+        color: #2f3542;
+        cursor: pointer;
+        user-select: none;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .dice:hover {
+        transform: scale(1.05);
+      }
+
+      .dice.rolling {
+        animation: rollDice 0.8s ease-in-out;
+      }
+
+      @keyframes rollDice {
+        0% {
+          transform: rotate(0deg) scale(1);
+        }
+        25% {
+          transform: rotate(90deg) scale(1.1);
+        }
+        50% {
+          transform: rotate(180deg) scale(1);
+        }
+        75% {
+          transform: rotate(270deg) scale(1.1);
+        }
+        100% {
+          transform: rotate(360deg) scale(1);
+        }
+      }
+
+      #rollButton {
+        background: linear-gradient(45deg, #ff3b5c, #ff6b8b);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        font-size: 1rem;
+        font-weight: 700;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 100%;
+      }
+
+      #rollButton:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(255, 59, 92, 0.4);
+      }
+
+      #rollButton:disabled {
+        background: #636e72;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      #diceMessage {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.8);
+        min-height: 24px;
+        margin-top: 10px;
+        font-size: 0.95rem;
+      }
+
+      /* ===== TURN INDICATOR ===== */
+      .turn-indicator {
+        background: rgba(0, 212, 255, 0.1);
+        border: 2px solid rgba(0, 212, 255, 0.3);
+        border-radius: 15px;
+        padding: 16px;
+        text-align: center;
+      }
+
+      .turn-label {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 5px;
+      }
+
+      .turn-player {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #00d4ff;
+        margin-bottom: 10px;
+      }
+
+      .turn-timer {
+        font-size: 2rem;
+        font-weight: 800;
+        color: white;
+      }
+
+      /* ===== PLAYERS LIST ===== */
+      .players-list {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        flex: 1;
+        overflow-y: auto;
+      }
+
+      .players-title {
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+        color: #00d4ff;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .player-list-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        margin-bottom: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        border: 1px solid transparent;
+        transition: all 0.3s ease;
+      }
+
+      .player-list-item.active {
+        background: rgba(0, 212, 255, 0.1);
+        border-color: rgba(0, 212, 255, 0.3);
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+      }
+
+      .player-list-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+      }
+
+      .player-list-red .player-list-color {
+        background: #ff3b5c;
+      }
+      .player-list-green .player-list-color {
+        background: #00e676;
+      }
+      .player-list-blue .player-list-color {
+        background: #4361ee;
+      }
+      .player-list-yellow .player-list-color {
+        background: #ffb74d;
+      }
+
+      .player-list-info {
+        flex: 1;
+      }
+
+      .player-list-name {
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+
+      .player-list-stats {
+        display: flex;
+        gap: 15px;
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.6);
+        margin-top: 5px;
+      }
+
+      /* ===== GAME STATS ===== */
+      .game-stats {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+      }
+
+      .stat-box {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+      }
+
+      .stat-label {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 5px;
+      }
+
+      .stat-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: white;
+      }
+
+      /* ===== MESSAGE BOX ===== */
+      .message-box {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(15, 15, 30, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 40px;
+        z-index: 2000;
+        display: none;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
+      }
+
+      .message-box.show {
+        display: block;
+        animation: fadeIn 0.3s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+
+      .message-title {
+        font-size: 2.5rem;
+        margin-bottom: 20px;
+        background: linear-gradient(45deg, #ff3b5c, #00d4ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .message-content {
+        line-height: 1.6;
+        margin-bottom: 30px;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 1.1rem;
+      }
+
+      .message-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+      }
+
+      /* ===== LOADING SCREEN ===== */
+      .loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0f0f1e, #1a1a2e);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 3000;
+        transition: opacity 0.5s ease;
+      }
+
+      .loading-screen.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-top: 4px solid #ff3b5c;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading-text {
+        font-size: 1.2rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      /* ===== WINNER MESSAGE ===== */
+      .winner-message {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        z-index: 2000;
+      }
+
+      .winner-content {
+        background: white;
+        padding: 40px;
+        border-radius: 10px;
+        text-align: center;
+        animation: popup 0.5s ease-out;
+        max-width: 500px;
+        width: 90%;
+      }
+
+      @keyframes popup {
+        from {
+          transform: scale(0.5);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .play-again {
+        padding: 12px 30px;
+        font-size: 1.1rem;
+        background: linear-gradient(45deg, #4caf50, #2196f3);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        margin-top: 20px;
+        font-weight: bold;
+      }
+
+      /* ===== RESPONSIVE DESIGN ===== */
+      @media (max-width: 1200px) {
+        .game-content {
+          flex-direction: column;
+        }
+
+        .game-sidebar {
+          min-width: 100%;
+          border-left: none;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .ludo-container {
+          max-width: 500px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .game-title {
+          font-size: 2.4rem;
+        }
+        .game-modes {
+          flex-direction: column;
+          align-items: center;
+        }
+        .mode-card {
+          width: 100%;
+          max-width: 340px;
+        }
+        .player-options {
+          grid-template-columns: 1fr;
+        }
+        .action-buttons {
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+        }
+        .btn {
+          width: 100%;
+          max-width: 280px;
+          padding: 10px 16px;
+          font-size: 0.95rem;
+        }
+        #rollButton {
+          padding: 10px 16px;
+          font-size: 0.95rem;
+        }
+        .control-btn {
+          width: 32px;
+          height: 32px;
+          font-size: 0.95rem;
+        }
+        .game-controls {
+          gap: 8px;
+        }
+        .game-header {
+          flex-direction: column;
+          gap: 15px;
+          text-align: center;
+        }
+        .ludo-container {
+          grid-template-columns: repeat(15, minmax(18px, 1fr));
+          grid-template-rows: repeat(15, minmax(18px, 1fr));
+        }
+        .piece {
+          font-size: 8px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .game-title {
+          font-size: 2rem;
+        }
+        .mode-title {
+          font-size: 1.2rem;
+        }
+        .selection-title {
+          font-size: 1.2rem;
+        }
+        .ludo-container {
+          max-width: 100%;
+          grid-template-columns: repeat(15, minmax(15px, 1fr));
+          grid-template-rows: repeat(15, minmax(15px, 1fr));
+        }
+        .piece {
+          font-size: 7px;
+        }
+        .btn {
+          max-width: 260px;
+          padding: 8px 14px;
+          font-size: 0.9rem;
+          border-radius: 8px;
+        }
+        #rollButton {
+          padding: 8px 14px;
+          font-size: 0.9rem;
+        }
+        .control-btn {
+          width: 30px;
+          height: 30px;
+          font-size: 0.9rem;
+        }
+      }
+
+      /* Dice size compaction */
+      @media (max-width: 768px) {
+        .dice {
+          width: 80px;
+          height: 80px;
+          font-size: 40px;
+        }
+      }
+      @media (max-width: 480px) {
+        .dice {
+          width: 64px;
+          height: 64px;
+          font-size: 32px;
+        }
+      }
+
+      /* Height-based compression to keep Start/Help visible */
+      @media (max-height: 740px) {
+        .start-screen {
+          padding-top: 12px;
+          justify-content: flex-start;
+        }
+        .game-title {
+          font-size: 2.2rem;
+        }
+        .game-subtitle {
+          font-size: 1rem;
+          margin-bottom: 16px;
+        }
+        .game-modes {
+          margin: 12px 0;
+          gap: 12px;
+        }
+        .mode-card {
+          padding: 16px 12px;
+        }
+        .mode-icon {
+          width: 64px;
+          height: 64px;
+          font-size: 2.2rem;
+          margin-bottom: 10px;
+        }
+        .player-selection {
+          margin: 12px 0;
+          padding: 12px;
+        }
+        .action-buttons {
+          margin-top: 12px;
+          gap: 10px;
+        }
+      }
+      @media (max-height: 640px) {
+        .game-title {
+          font-size: 1.8rem;
+        }
+        .game-subtitle {
+          font-size: 0.95rem;
+          margin-bottom: 12px;
+        }
+        .mode-title {
+          font-size: 1.1rem;
+        }
+        .mode-description {
+          font-size: 0.9rem;
+        }
+        .mode-card {
+          padding: 14px 10px;
+        }
+        .mode-icon {
+          width: 56px;
+          height: 56px;
+          font-size: 2rem;
+        }
+        .player-option {
+          padding: 10px;
+        }
+        .selection-title {
+          margin-bottom: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading Ludo Game...</div>
+    </div>
+
+    <!-- Start Screen -->
+    <div class="start-screen" id="startScreen">
+      <h1 class="game-title">🎮 LUDO</h1>
+      <p class="game-subtitle">
+        Experience the classic board game with beautiful graphics and smooth
+        gameplay
+      </p>
+
+      <div class="game-modes">
+        <div class="mode-card single-player" id="singlePlayerMode">
+          <div class="mode-icon">👤</div>
+          <h2 class="mode-title">Single Player</h2>
+          <p class="mode-description">
+            Play against AI opponents. Choose your color and test your skills!
+          </p>
+        </div>
+
+        <div class="mode-card multiplayer" id="multiplayerMode">
+          <div class="mode-icon">👥</div>
+          <h2 class="mode-title">Multiplayer</h2>
+          <p class="mode-description">
+            Play with friends on the same device. Pass and play!
+          </p>
+        </div>
+      </div>
+
+      <!-- Player Selection (Initially Hidden) -->
+      <div class="player-selection" id="playerSelection" style="display: none">
+        <h2 class="selection-title">👥 Player Setup</h2>
+        <div class="player-options" id="playerOptions">
+          <!-- Player options will be added here -->
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-secondary" id="backToModesBtn">
+            <i class="btn-icon">←</i> Back
+          </button>
+          <button class="btn btn-primary" id="startGameBtn">
+            <i class="btn-icon">▶</i> Start Game
+          </button>
+        </div>
+      </div>
+
+      <!-- Initial Action Buttons -->
+      <div class="action-buttons" id="initialButtons">
+        <button class="btn btn-primary" id="selectModeBtn">
+          <i class="btn-icon">▶</i> Select Game Mode
+        </button>
+        <button class="btn btn-secondary" id="viewRulesBtn">
+          <i class="btn-icon">📖</i> Game Rules
+        </button>
+      </div>
+    </div>
+
+    <!-- Game Container -->
+    <div class="game-container" id="gameContainer">
+      <!-- Game Header -->
+      <div class="game-header">
+        <div>
+          <div class="game-title-small">🎮 LUDO</div>
+          <div class="game-mode-display" id="gameModeDisplay">
+            Single Player
+          </div>
+        </div>
+
+        <div class="game-controls">
+          <button class="control-btn" id="soundBtn" title="Toggle Sound">
+            <i class="fas fa-volume-up"></i>
+          </button>
+          <button class="control-btn" id="pauseBtn" title="Pause Game">
+            <i class="fas fa-pause"></i>
+          </button>
+          <button class="control-btn" id="homeBtn" title="Main Menu">
+            <i class="fas fa-home"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Game Content -->
+      <div class="game-content">
+        <!-- Board Container -->
+        <div class="board-container">
+          <div class="ludo-container" id="gameBoard">
+            <!-- Ludo board grid will be generated here -->
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="game-sidebar">
+          <!-- Dice Section -->
+          <div class="dice-section">
+            <h3 class="dice-title"><i class="fas fa-dice"></i> Roll Dice</h3>
+            <div class="dice-container">
+              <div class="dice" id="dice">6</div>
+              <button id="rollButton">🎲 ROLL DICE</button>
+              <div id="diceMessage">Red's turn - Roll to move!</div>
+            </div>
+          </div>
+
+          <!-- Turn Indicator -->
+          <div class="turn-indicator">
+            <div class="turn-label">Current Turn</div>
+            <div class="turn-player" id="currentPlayer">Red Player</div>
+            <div class="turn-timer" id="turnTimer">∞</div>
+          </div>
+
+          <!-- Players List -->
+          <div class="players-list">
+            <h3 class="players-title"><i class="fas fa-users"></i> Players</h3>
+            <div id="playersList">
+              <!-- Players will be added here -->
+            </div>
+          </div>
+
+          <!-- Game Stats -->
+          <div class="game-stats">
+            <div class="stats-grid">
+              <div class="stat-box">
+                <div class="stat-label">Total Moves</div>
+                <div class="stat-value" id="totalMoves">0</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Game Time</div>
+                <div class="stat-value" id="gameTime">00:00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Message Box -->
+    <div class="message-box" id="messageBox">
+      <h2 class="message-title" id="messageTitle">Game Rules</h2>
+      <div class="message-content" id="messageContent">
+        <strong>HOW TO PLAY:</strong><br /><br />
+        1. <strong>ROLL DICE:</strong> Click "ROLL DICE" to roll<br />
+        2. <strong>MOVE PIECES:</strong> Click on highlighted piece to move<br />
+        3. <strong>START PIECE:</strong> Roll a 6 to move piece from home<br />
+        4. <strong>CAPTURE:</strong> Land on opponent's piece to send it home<br />
+        5. <strong>EXTRA TURN:</strong> Roll a 6 to get another turn<br />
+        6. <strong>WIN:</strong> Get all 4 pieces home first!<br /><br />
+        <em>Colors: Red, Green, Yellow, Blue</em>
+      </div>
+      <div class="message-buttons">
+        <button class="btn" onclick="closeMessage()">OK</button>
+      </div>
+    </div>
+
+    <!-- Winner Message -->
+    <div class="winner-message" id="winnerMessage">
+      <div class="winner-content">
+        <h2 id="winnerText">Congratulations!</h2>
+        <p id="winnerDetails"></p>
+        <button class="play-again" id="playAgain">PLAY AGAIN</button>
+      </div>
+    </div>
+
+    <!-- Font Awesome Icons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+    <script>
+      // =============================================
+      // LUDO GAME - COMPLETE GAME LOGIC
+      // =============================================
+
+      class LudoGame {
+        constructor() {
+          // Game state
+          this.gameState = "rolling";
+          this.players = [];
+          this.currentPlayerIndex = 0;
+          this.diceValue = 6;
+          this.totalMoves = 0;
+          this.gameTime = 0;
+          this.gameTimer = null;
+          this.isPaused = false;
+          this.soundEnabled = true;
+          this.extraTurn = false;
+          this.selectedMode = "single";
+          this.humanColor = "red";
+          this.pieces = {};
+          this.selectedPiece = null;
+          this.gameStarted = false;
+
+          // Game configuration
+          this.colors = ["red", "green", "blue", "yellow"];
+          this.colorConfig = {
+            red: { name: "Red", hex: "#ff3b5c" },
+            green: { name: "Green", hex: "#00e676" },
+            blue: { name: "Blue", hex: "#4361ee" },
+            yellow: { name: "Yellow", hex: "#ffb74d" },
+          };
+
+          // Initialize game board positions
+          this.initializeBoardPositions();
+          this.init();
+        }
+
+        initializeBoardPositions() {
+          // Board positions for each player (0-51)
+          this.boardPositions = {
+            // These are placeholder positions - in a real implementation,
+            // you would map these to actual grid positions
+            red: Array.from({ length: 52 }, (_, i) => i),
+            green: Array.from({ length: 52 }, (_, i) => (i + 13) % 52),
+            blue: Array.from({ length: 52 }, (_, i) => (i + 26) % 52),
+            yellow: Array.from({ length: 52 }, (_, i) => (i + 39) % 52),
+          };
+
+          // Safe positions
+          this.safePositions = [0, 8, 13, 21, 26, 34, 39, 47];
+        }
+
+        init() {
+          this.initEventListeners();
+          this.hideLoadingScreen();
+          this.createBoard();
+        }
+
+        hideLoadingScreen() {
+          setTimeout(() => {
+            document.getElementById("loadingScreen").classList.add("hidden");
+            setTimeout(() => {
+              document.getElementById("loadingScreen").style.display = "none";
+            }, 500);
+          }, 1000);
+        }
+
+        initEventListeners() {
+          // Start screen buttons
+          document
+            .getElementById("selectModeBtn")
+            .addEventListener("click", () => this.showModeSelection());
+          document
+            .getElementById("viewRulesBtn")
+            .addEventListener("click", () => this.showRules());
+
+          // Mode selection
+          document
+            .getElementById("singlePlayerMode")
+            .addEventListener("click", () => this.selectMode("single"));
+          document
+            .getElementById("multiplayerMode")
+            .addEventListener("click", () => this.selectMode("multi"));
+
+          // Player selection
+          document
+            .getElementById("backToModesBtn")
+            .addEventListener("click", () => this.backToModes());
+          document
+            .getElementById("startGameBtn")
+            .addEventListener("click", () => this.startGame());
+
+          // Game controls
+          document
+            .getElementById("rollButton")
+            .addEventListener("click", () => this.rollDice());
+          document
+            .getElementById("dice")
+            .addEventListener("click", () => this.rollDice());
+          document
+            .getElementById("pauseBtn")
+            .addEventListener("click", () => this.togglePause());
+          document
+            .getElementById("soundBtn")
+            .addEventListener("click", () => this.toggleSound());
+          document
+            .getElementById("homeBtn")
+            .addEventListener("click", () => this.goToMainMenu());
+
+          // Winner message
+          document
+            .getElementById("playAgain")
+            .addEventListener("click", () => this.resetGame());
+        }
+
+        showModeSelection() {
+          document.getElementById("initialButtons").style.display = "none";
+          document.getElementById("playerSelection").style.display = "block";
+          this.updatePlayerOptions();
+        }
+
+        selectMode(mode) {
+          this.selectedMode = mode;
+
+          // Update UI
+          document.querySelectorAll(".mode-card").forEach((card) => {
+            card.classList.remove("active");
+          });
+
+          if (mode === "single") {
+            document.getElementById("singlePlayerMode").classList.add("active");
+          } else {
+            document.getElementById("multiplayerMode").classList.add("active");
+          }
+
+          this.updatePlayerOptions();
+        }
+
+        updatePlayerOptions() {
+          const container = document.getElementById("playerOptions");
+          container.innerHTML = "";
+
+          this.colors.forEach((color, index) => {
+            const isHuman =
+              this.selectedMode === "multi" ||
+              (this.selectedMode === "single" && color === this.humanColor);
+
+            const option = document.createElement("div");
+            option.className = `player-option player-${color} ${
+              isHuman ? "selected" : ""
+            }`;
+            option.innerHTML = `
+              <div class="player-color"></div>
+              <div class="player-name">${
+                this.colorConfig[color].name
+              } Player</div>
+              <div class="player-type ${isHuman ? "type-human" : "type-ai"}">${
+              isHuman ? "👤 Human" : "🤖 AI"
+            }</div>
+            `;
+
+            if (this.selectedMode === "single") {
+              option.addEventListener("click", () =>
+                this.selectHumanColor(color)
+              );
+            }
+
+            container.appendChild(option);
+          });
+        }
+
+        selectHumanColor(color) {
+          this.humanColor = color;
+          this.updatePlayerOptions();
+        }
+
+        backToModes() {
+          document.getElementById("playerSelection").style.display = "none";
+          document.getElementById("initialButtons").style.display = "flex";
+        }
+
+        startGame() {
+          // Initialize players based on selected mode
+          this.initializePlayers();
+
+          // Hide start screen, show game
+          document.getElementById("startScreen").style.display = "none";
+          document.getElementById("gameContainer").classList.add("active");
+
+          // Update game mode display
+          document.getElementById("gameModeDisplay").textContent =
+            this.selectedMode === "single" ? "Single Player" : "Multiplayer";
+
+          // Initialize game
+          this.initializePieces();
+          this.createBoard();
+          this.updatePiecesOnBoard();
+          this.updateUI();
+          this.updatePlayersList();
+          this.startGameTimer();
+
+          this.showMessage(
+            "Game Started!",
+            `${this.players[this.currentPlayerIndex].name}'s turn first!`
+          );
+        }
+
+        initializePlayers() {
+          this.players = [];
+
+          this.colors.forEach((color, index) => {
+            const isHuman =
+              this.selectedMode === "multi" || color === this.humanColor;
+
+            this.players.push({
+              id: index,
+              color: color,
+              name: `${this.colorConfig[color].name} Player`,
+              isHuman: isHuman,
+              moves: 0,
+              finished: 0,
+            });
+          });
+
+          this.currentPlayerIndex = 0;
+        }
+
+        initializePieces() {
+          this.pieces = {};
+          this.colors.forEach((player) => {
+            this.pieces[player] = [
+              {
+                id: 0,
+                position: -1,
+                homePosition: 0,
+                atHome: true,
+                finished: false,
+              },
+              {
+                id: 1,
+                position: -1,
+                homePosition: 1,
+                atHome: true,
+                finished: false,
+              },
+              {
+                id: 2,
+                position: -1,
+                homePosition: 2,
+                atHome: true,
+                finished: false,
+              },
+              {
+                id: 3,
+                position: -1,
+                homePosition: 3,
+                atHome: true,
+                finished: false,
+              },
+            ];
+          });
+        }
+
+        createBoard() {
+          const board = document.getElementById("gameBoard");
+          board.innerHTML = "";
+
+          // Create 15x15 grid
+          for (let row = 0; row < 15; row++) {
+            for (let col = 0; col < 15; col++) {
+              const cell = document.createElement("div");
+              cell.className = "cell";
+              cell.id = `cell-${row}-${col}`;
+
+              // Determine cell type based on position
+              if (
+                (row < 6 && col < 6) ||
+                (row < 6 && col > 8) ||
+                (row > 8 && col < 6) ||
+                (row > 8 && col > 8)
+              ) {
+                cell.classList.add("home");
+              }
+
+              // Red home
+              if (row === 1 && col === 1) cell.classList.add("red-home");
+              if (row === 1 && col === 2) cell.classList.add("red-home");
+              if (row === 2 && col === 1) cell.classList.add("red-home");
+              if (row === 2 && col === 2) cell.classList.add("red-home");
+
+              // Green home
+              if (row === 1 && col === 12) cell.classList.add("green-home");
+              if (row === 1 && col === 13) cell.classList.add("green-home");
+              if (row === 2 && col === 12) cell.classList.add("green-home");
+              if (row === 2 && col === 13) cell.classList.add("green-home");
+
+              // Blue home
+              if (row === 12 && col === 1) cell.classList.add("blue-home");
+              if (row === 12 && col === 2) cell.classList.add("blue-home");
+              if (row === 13 && col === 1) cell.classList.add("blue-home");
+              if (row === 13 && col === 2) cell.classList.add("blue-home");
+
+              // Yellow home
+              if (row === 12 && col === 12) cell.classList.add("yellow-home");
+              if (row === 12 && col === 13) cell.classList.add("yellow-home");
+              if (row === 13 && col === 12) cell.classList.add("yellow-home");
+              if (row === 13 && col === 13) cell.classList.add("yellow-home");
+
+              // Path cells
+              if (
+                (row === 0 && col >= 6 && col <= 8) ||
+                (row === 14 && col >= 6 && col <= 8) ||
+                (col === 0 && row >= 6 && row <= 8) ||
+                (col === 14 && row >= 6 && row <= 8) ||
+                (row === 6 && col >= 0 && col <= 5) ||
+                (row === 8 && col >= 0 && col <= 5) ||
+                (row === 6 && col >= 9 && col <= 14) ||
+                (row === 8 && col >= 9 && col <= 14) ||
+                (col === 6 && row >= 0 && row <= 5) ||
+                (col === 8 && row >= 0 && row <= 5) ||
+                (col === 6 && row >= 9 && row <= 14) ||
+                (col === 8 && row >= 9 && row <= 14)
+              ) {
+                cell.classList.add("path");
+              }
+
+              // Center cells (safe zone)
+              if (row >= 6 && row <= 8 && col >= 6 && col <= 8) {
+                cell.classList.add("safe");
+              }
+
+              // Color-specific paths
+              if (
+                (row === 7 && col >= 0 && col <= 5) ||
+                (col === 7 && row >= 0 && row <= 5)
+              ) {
+                if (row === 7 && col === 0) cell.classList.add("red");
+                if (row === 7 && col === 1) cell.classList.add("red");
+                if (row === 7 && col === 2) cell.classList.add("red");
+                if (row === 7 && col === 3) cell.classList.add("red");
+                if (row === 7 && col === 4) cell.classList.add("red");
+                if (row === 7 && col === 5) cell.classList.add("red");
+              }
+
+              if (
+                (row === 7 && col >= 9 && col <= 14) ||
+                (col === 7 && row >= 9 && row <= 14)
+              ) {
+                if (row === 7 && col === 9) cell.classList.add("green");
+                if (row === 7 && col === 10) cell.classList.add("green");
+                if (row === 7 && col === 11) cell.classList.add("green");
+                if (row === 7 && col === 12) cell.classList.add("green");
+                if (row === 7 && col === 13) cell.classList.add("green");
+                if (row === 7 && col === 14) cell.classList.add("green");
+              }
+
+              board.appendChild(cell);
+            }
+          }
+        }
+
+        updatePiecesOnBoard() {
+          // Clear all pieces
+          document
+            .querySelectorAll(".piece")
+            .forEach((piece) => piece.remove());
+
+          // Add pieces for each player
+          this.colors.forEach((player) => {
+            this.pieces[player].forEach((piece, index) => {
+              if (!piece.finished) {
+                let cell;
+
+                if (piece.atHome) {
+                  // Piece is in home
+                  const homePositions = this.getHomePositions(player);
+                  if (index < homePositions.length) {
+                    cell = document.getElementById(homePositions[index]);
+                  }
+                } else if (piece.position !== -1) {
+                  // Piece is on path - simplified positioning
+                  const cellId = this.getBoardPosition(player, piece.position);
+                  cell = document.getElementById(cellId);
+                }
+
+                if (cell) {
+                  const pieceElement = document.createElement("div");
+                  pieceElement.className = `piece ${player}`;
+                  pieceElement.id = `${player}-piece-${piece.id}`;
+                  pieceElement.textContent = piece.id + 1;
+                  pieceElement.dataset.player = player;
+                  pieceElement.dataset.pieceId = piece.id;
+
+                  // Add click event
+                  pieceElement.addEventListener("click", () =>
+                    this.selectPiece(player, piece.id)
+                  );
+                  cell.appendChild(pieceElement);
+                }
+              }
+            });
+          });
+        }
+
+        getHomePositions(player) {
+          const positions = {
+            red: ["cell-1-1", "cell-1-2", "cell-2-1", "cell-2-2"],
+            green: ["cell-1-12", "cell-1-13", "cell-2-12", "cell-2-13"],
+            blue: ["cell-12-1", "cell-12-2", "cell-13-1", "cell-13-2"],
+            yellow: ["cell-12-12", "cell-12-13", "cell-13-12", "cell-13-13"],
+          };
+          return positions[player];
+        }
+
+        getBoardPosition(player, position) {
+          // Simplified mapping - in a real implementation this would be more complex
+          const startPositions = {
+            red: { row: 6, col: 1 },
+            green: { row: 1, col: 8 },
+            blue: { row: 8, col: 13 },
+            yellow: { row: 13, col: 6 },
+          };
+
+          const start = startPositions[player];
+          const pos = position % 52;
+          const steps = Math.min(pos, 50); // Cap at 50 steps
+
+          // Simple circular movement
+          let row = start.row;
+          let col = start.col;
+
+          // Move around the board (simplified)
+          if (steps < 13) {
+            col += steps;
+          } else if (steps < 26) {
+            row += steps - 12;
+          } else if (steps < 39) {
+            col -= steps - 25;
+          } else {
+            row -= steps - 38;
+          }
+
+          // Keep within bounds
+          row = Math.max(0, Math.min(14, row));
+          col = Math.max(0, Math.min(14, col));
+
+          return `cell-${row}-${col}`;
+        }
+
+        selectPiece(player, pieceId) {
+          if (
+            player !== this.players[this.currentPlayerIndex].color ||
+            !this.diceRolled
+          )
+            return;
+
+          const piece = this.pieces[player][pieceId];
+
+          // Check if piece can move
+          if (piece.atHome && this.diceValue !== 6) {
+            this.showMessage(`Need a 6 to bring out a piece!`);
+            return;
+          }
+
+          if (piece.finished) return;
+
+          // Deselect previous piece
+          if (this.selectedPiece) {
+            const prevPiece = document.getElementById(
+              `${this.selectedPiece.player}-piece-${this.selectedPiece.pieceId}`
+            );
+            if (prevPiece) prevPiece.classList.remove("selected");
+          }
+
+          // Select new piece
+          this.selectedPiece = { player, pieceId };
+          const pieceElement = document.getElementById(
+            `${player}-piece-${pieceId}`
+          );
+          if (pieceElement) pieceElement.classList.add("selected");
+
+          // Move the piece
+          this.movePiece(player, pieceId);
+        }
+
+        rollDice() {
+          if (this.gameState !== "rolling" || this.isPaused) return;
+
+          const dice = document.getElementById("dice");
+          const rollButton = document.getElementById("rollButton");
+
+          // Disable button during roll
+          rollButton.disabled = true;
+          dice.classList.add("rolling");
+
+          // Animate dice roll
+          let rolls = 0;
+          const rollInterval = setInterval(() => {
+            this.diceValue = Math.floor(Math.random() * 6) + 1;
+            dice.textContent = this.diceValue;
+            rolls++;
+
+            if (rolls > 10) {
+              clearInterval(rollInterval);
+              dice.classList.remove("rolling");
+              rollButton.disabled = false;
+
+              // Update player moves
+              this.players[this.currentPlayerIndex].moves++;
+              this.totalMoves++;
+
+              // Update UI
+              this.updateUI();
+              this.updatePlayersList();
+
+              // Show message
+              const currentPlayer = this.players[this.currentPlayerIndex];
+              this.showMessage(
+                "Dice Rolled!",
+                `${currentPlayer.name} rolled a ${this.diceValue}`
+              );
+
+              // Set dice rolled flag
+              this.diceRolled = true;
+              this.gameState = "moving";
+
+              // Check for valid moves
+              const movablePieces = this.getMovablePieces();
+
+              if (movablePieces.length === 0) {
+                // No moves available
+                this.showMessage(
+                  "No Moves",
+                  "No pieces can move. Next player!"
+                );
+                setTimeout(() => this.nextTurn(), 1500);
+              } else if (currentPlayer.isHuman) {
+                // Human player - highlight movable pieces
+                this.highlightMovablePieces(movablePieces);
+                document.getElementById(
+                  "diceMessage"
+                ).textContent = `Select a piece to move ${this.diceValue} steps`;
+              } else {
+                // AI player - make a move after delay
+                setTimeout(() => this.makeAIMove(movablePieces), 1000);
+              }
+            }
+          }, 80);
+        }
+
+        getMovablePieces() {
+          const player = this.players[this.currentPlayerIndex];
+          const playerPieces = this.pieces[player.color];
+          const movablePieces = [];
+
+          playerPieces.forEach((piece, index) => {
+            if (this.canMovePiece(player.color, index)) {
+              movablePieces.push(index);
+            }
+          });
+
+          return movablePieces;
+        }
+
+        canMovePiece(color, pieceIndex) {
+          const piece = this.pieces[color][pieceIndex];
+
+          // Piece in home - can only move out on 6
+          if (piece.atHome) {
+            return this.diceValue === 6;
+          }
+
+          // Piece already finished - can't move
+          if (piece.finished) {
+            return false;
+          }
+
+          // Piece on board - check if move is valid
+          const newPos = piece.position + this.diceValue;
+          return newPos <= 51; // Can move if still on board
+        }
+
+        highlightMovablePieces(pieceIndices) {
+          // Remove all highlights
+          document.querySelectorAll(".piece").forEach((piece) => {
+            piece.classList.remove("active");
+          });
+
+          // Highlight movable pieces
+          const player = this.players[this.currentPlayerIndex];
+          pieceIndices.forEach((index) => {
+            const piece = document.getElementById(
+              `${player.color}-piece-${index}`
+            );
+            if (piece) piece.classList.add("active");
+          });
+        }
+
+        makeAIMove(movablePieces) {
+          if (movablePieces.length === 0) {
+            this.nextTurn();
+            return;
+          }
+
+          // Simple AI: prefer pieces in home, then random
+          const player = this.players[this.currentPlayerIndex];
+          let selectedPiece = movablePieces[0];
+
+          // Check if any pieces in home (to get them out)
+          const homePieces = movablePieces.filter(
+            (index) => this.pieces[player.color][index].atHome
+          );
+          if (homePieces.length > 0) {
+            selectedPiece = homePieces[0];
+          } else {
+            // Random selection
+            selectedPiece =
+              movablePieces[Math.floor(Math.random() * movablePieces.length)];
+          }
+
+          this.movePiece(player.color, selectedPiece);
+        }
+
+        movePiece(player, pieceId) {
+          const piece = this.pieces[player][pieceId];
+          const currentPlayer = this.players[this.currentPlayerIndex];
+
+          if (currentPlayer.color !== player) return;
+
+          let moved = false;
+
+          if (piece.atHome && this.diceValue === 6) {
+            // Bring piece out of home
+            piece.atHome = false;
+            piece.position = 0;
+            moved = true;
+            this.showMessage(
+              "Piece Moved!",
+              `${
+                player.charAt(0).toUpperCase() + player.slice(1)
+              } brought out a piece!`
+            );
+          } else if (!piece.atHome && !piece.finished) {
+            // Move piece on path
+            const newPosition = piece.position + this.diceValue;
+
+            if (newPosition <= 51) {
+              piece.position = newPosition;
+              moved = true;
+
+              // Check if piece reached home (simplified)
+              if (newPosition >= 51) {
+                piece.finished = true;
+                currentPlayer.finished++;
+                this.showMessage(
+                  "Piece Home!",
+                  `${
+                    player.charAt(0).toUpperCase() + player.slice(1)
+                  }'s piece reached home!`
+                );
+
+                // Check if player won
+                if (this.checkWin(player)) {
+                  this.showWinner(player);
+                  return;
+                }
+              }
+
+              // Check for collisions with other players' pieces
+              this.checkCollisions(player, pieceId, newPosition);
+            }
+          }
+
+          if (moved) {
+            // Remove highlights
+            this.highlightMovablePieces([]);
+
+            // Update board
+            this.updatePiecesOnBoard();
+
+            // Reset for next turn if dice wasn't 6
+            if (this.diceValue !== 6) {
+              this.nextTurn();
+            } else {
+              // Player gets another turn if they rolled 6
+              this.showMessage(
+                "Extra Turn!",
+                `${
+                  player.charAt(0).toUpperCase() + player.slice(1)
+                } gets another turn!`
+              );
+              this.extraTurn = true;
+              this.diceRolled = false;
+              this.gameState = "rolling";
+              this.updateUI();
+            }
+          }
+        }
+
+        checkCollisions(player, pieceId, position) {
+          const currentPiece = this.pieces[player][pieceId];
+
+          // Check all other players
+          this.colors.forEach((otherPlayer) => {
+            if (otherPlayer !== player) {
+              this.pieces[otherPlayer].forEach((otherPiece) => {
+                if (
+                  !otherPiece.atHome &&
+                  !otherPiece.finished &&
+                  otherPiece.position === position
+                ) {
+                  // Send other piece back home
+                  otherPiece.atHome = true;
+                  otherPiece.position = -1;
+                  this.showMessage(
+                    "Capture!",
+                    `${
+                      player.charAt(0).toUpperCase() + player.slice(1)
+                    } sent ${otherPlayer}'s piece home!`
+                  );
+                }
+              });
+            }
+          });
+        }
+
+        checkWin(player) {
+          return this.pieces[player].every((piece) => piece.finished);
+        }
+
+        showWinner(player) {
+          const winnerMessage = document.getElementById("winnerMessage");
+          const winnerText = document.getElementById("winnerText");
+          const winnerDetails = document.getElementById("winnerDetails");
+
+          winnerText.textContent = `${
+            player.charAt(0).toUpperCase() + player.slice(1)
+          } Wins!`;
+          winnerDetails.textContent = `Congratulations! ${
+            player.charAt(0).toUpperCase() + player.slice(1)
+          } player has won the game by getting all 4 pieces home!`;
+          winnerMessage.style.display = "flex";
+
+          // Disable dice roll
+          document.getElementById("rollButton").disabled = true;
+          this.gameState = "finished";
+        }
+
+        nextTurn() {
+          this.extraTurn = false;
+          this.diceRolled = false;
+          this.selectedPiece = null;
+
+          // Move to next player
+          this.currentPlayerIndex =
+            (this.currentPlayerIndex + 1) % this.players.length;
+          this.gameState = "rolling";
+
+          // Update UI
+          this.updateUI();
+          this.updatePlayersList();
+
+          // Show notification
+          const nextPlayer = this.players[this.currentPlayerIndex];
+          this.showMessage("Next Player", `${nextPlayer.name}'s turn`);
+
+          // If next player is AI, auto-roll after delay
+          if (!nextPlayer.isHuman) {
+            setTimeout(() => this.rollDice(), 1500);
+          }
+        }
+
+        updateUI() {
+          const currentPlayer = this.players[this.currentPlayerIndex];
+
+          // Update turn indicator
+          document.getElementById("currentPlayer").textContent =
+            currentPlayer.name;
+          document.getElementById("currentPlayer").style.color =
+            this.colorConfig[currentPlayer.color].hex;
+
+          // Update game stats
+          document.getElementById("totalMoves").textContent = this.totalMoves;
+
+          // Update dice message
+          const diceMessage = document.getElementById("diceMessage");
+          if (this.gameState === "moving") {
+            diceMessage.textContent = `Select piece to move ${this.diceValue} steps`;
+          } else {
+            diceMessage.textContent = `${currentPlayer.name}'s turn - Roll to move!`;
+          }
+
+          // Update dice value
+          document.getElementById("dice").textContent = this.diceValue;
+
+          // Update roll button state
+          document.getElementById("rollButton").disabled =
+            this.gameState !== "rolling" ||
+            this.gameState === "finished" ||
+            this.isPaused;
+        }
+
+        updatePlayersList() {
+          const container = document.getElementById("playersList");
+          container.innerHTML = "";
+
+          this.players.forEach((player, index) => {
+            const piecesAtHome = this.pieces[player.color].filter(
+              (p) => p.atHome
+            ).length;
+            const piecesFinished = this.pieces[player.color].filter(
+              (p) => p.finished
+            ).length;
+            const piecesOnBoard = 4 - piecesAtHome - piecesFinished;
+
+            const item = document.createElement("div");
+            item.className = `player-list-item player-list-${player.color} ${
+              index === this.currentPlayerIndex ? "active" : ""
+            }`;
+            item.innerHTML = `
+              <div class="player-list-color"></div>
+              <div class="player-list-info">
+                <div class="player-list-name">${player.name}</div>
+                <div class="player-list-stats">
+                  <span>🏠 ${piecesOnBoard}</span>
+                  <span>🎯 ${piecesFinished}</span>
+                  <span>🎲 ${player.moves}</span>
+                </div>
+              </div>
+            `;
+            container.appendChild(item);
+          });
+        }
+
+        showMessage(title, message) {
+          // Simple notification in console
+          console.log(`${title}: ${message}`);
+          document.getElementById("diceMessage").textContent = message;
+        }
+
+        startGameTimer() {
+          clearInterval(this.gameTimer);
+          this.gameTimer = setInterval(() => {
+            if (!this.isPaused) {
+              this.gameTime++;
+              const minutes = Math.floor(this.gameTime / 60);
+              const seconds = this.gameTime % 60;
+              document.getElementById("gameTime").textContent = `${minutes
+                .toString()
+                .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+            }
+          }, 1000);
+        }
+
+        togglePause() {
+          this.isPaused = !this.isPaused;
+          const btn = document.getElementById("pauseBtn");
+
+          if (this.isPaused) {
+            btn.innerHTML = '<i class="fas fa-play"></i>';
+            clearInterval(this.gameTimer);
+            this.showMessage("Game Paused", "Click play to resume");
+          } else {
+            btn.innerHTML = '<i class="fas fa-pause"></i>';
+            this.startGameTimer();
+            this.showMessage("Game Resumed", "Game continues");
+          }
+        }
+
+        toggleSound() {
+          this.soundEnabled = !this.soundEnabled;
+          const btn = document.getElementById("soundBtn");
+
+          if (this.soundEnabled) {
+            btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+            this.showMessage("Sound On", "Game sounds enabled");
+          } else {
+            btn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+            this.showMessage("Sound Off", "Game sounds disabled");
+          }
+        }
+
+        goToMainMenu() {
+          if (confirm("Return to main menu? Current game will be lost.")) {
+            // Stop timer
+            clearInterval(this.gameTimer);
+
+            // Hide game, show start screen
+            document.getElementById("gameContainer").classList.remove("active");
+            document.getElementById("winnerMessage").style.display = "none";
+            document.getElementById("startScreen").style.display = "flex";
+
+            // Reset state
+            this.resetGameState();
+
+            this.showMessage("Main Menu", "Welcome back!");
+          }
+        }
+
+        resetGameState() {
+          this.gameState = "rolling";
+          this.currentPlayerIndex = 0;
+          this.diceValue = 6;
+          this.totalMoves = 0;
+          this.gameTime = 0;
+          this.isPaused = false;
+          this.extraTurn = false;
+          this.selectedPiece = null;
+          this.diceRolled = false;
+          this.gameStarted = false;
+
+          // Reset dice display
+          document.getElementById("dice").textContent = "6";
+          document.getElementById("rollButton").disabled = false;
+        }
+
+        resetGame() {
+          // Hide winner message
+          document.getElementById("winnerMessage").style.display = "none";
+
+          // Reset game state
+          this.resetGameState();
+
+          // Reinitialize players and pieces
+          this.initializePlayers();
+          this.initializePieces();
+
+          // Update board
+          this.updatePiecesOnBoard();
+          this.updateUI();
+          this.updatePlayersList();
+          this.startGameTimer();
+
+          this.showMessage("Game Reset", "New game started! Red's turn first.");
+        }
+
+        showRules() {
+          document.getElementById("messageTitle").textContent = "🎮 GAME RULES";
+          document.getElementById("messageContent").innerHTML = `
+            <strong>HOW TO PLAY:</strong><br><br>
+            1. <strong>ROLL DICE:</strong> Click "ROLL DICE" to roll<br>
+            2. <strong>MOVE PIECES:</strong> Click on highlighted piece to move<br>
+            3. <strong>START PIECE:</strong> Roll a 6 to move piece from home<br>
+            4. <strong>CAPTURE:</strong> Land on opponent's piece to send it home<br>
+            5. <strong>EXTRA TURN:</strong> Roll a 6 to get another turn<br>
+            6. <strong>WIN:</strong> Get all 4 pieces home first!<br><br>
+            <strong>Game Modes:</strong><br>
+            • <strong>Single Player:</strong> Play against AI opponents<br>
+            • <strong>Multiplayer:</strong> Play with friends (pass and play)<br><br>
+            <em>Colors: Red, Green, Yellow, Blue</em>
+          `;
+          document.getElementById("messageBox").classList.add("show");
+        }
+      }
+
+      // =============================================
+      // GLOBAL FUNCTIONS
+      // =============================================
+
+      let game;
+
+      function closeMessage() {
+        document.getElementById("messageBox").classList.remove("show");
+      }
+
+      // Initialize game when page loads
+      window.addEventListener("load", () => {
+        game = new LudoGame();
+      });
+    </script>
+  </body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nairaland 3D Ludo</title>
     <style>
       * {
