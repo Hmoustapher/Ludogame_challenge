@@ -29,20 +29,6 @@ Created for the **Nairaland Coding Challenge (December 2025)**, this project sho
 
 > **No installation required** – just open and play!
 
-### Local Development Server (Recommended for Best Experience)
-
-To avoid potential CORS issues and get faster loading:
-
-```bash
-# Navigate to the folder containing index.html
-cd /path/to/your/game/folder
-
-# Run a simple local server (requires Python)
-python -m http.server 8080
-
-# Then open your browser and go to:
-# http://127.0.0.1:8080/
-```
 
 ---
 
